@@ -1,4 +1,4 @@
-from .utils import parse_txt, create_spline3
+from .utils import parse_txt, create_spline3, create_trans_imshow, create_interp1d, find_root
 from .cross_section import Comparator
 
 # Automatically set style

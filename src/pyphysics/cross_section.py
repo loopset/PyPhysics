@@ -42,7 +42,7 @@ class Comparator:
         self.fFitted[key] = np.column_stack((x, yeval))
         return
 
-    def fit(self) -> None:
+    def fit(self, show: bool = False) -> None:
         ## Weighted fit or not
         shape = self.fExp.shape[1]
         weights = (1.0 / self.fExp[:, 2] ** 2) if shape == 3 else None
@@ -53,10 +53,14 @@ class Comparator:
             # Build fitted graph
             self._build_fitted(key, res)
             # And add SF
-            self.fSFs[key] = res.uvars["sf"]
+            if hasattr(res, "uvars"):
+                self.fSFs[key] = res.uvars["sf"]
+            else:
+                self.fSFs[key] = un.ufloat(res.params["sf"], 0)
             # And print!
-            print(f"---- Comparator::Fit() for {key}")
-            res.params.pretty_print()
+            if show:
+                print(f"---- Comparator::Fit() for {key}")
+                res.params.pretty_print()
         return
 
     def _get_key(self, key: str) -> str:
