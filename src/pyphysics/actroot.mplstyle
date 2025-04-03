@@ -35,11 +35,11 @@ axes.linewidth : 0.75
 grid.linewidth : 0.5
 lines.linewidth : 1.
 lines.marker : none
-lines.markerfacecolor: white  
+lines.markerfacecolor: white
 lines.markersize : 6
 
 # Errorbar
-errorbar.capsize : 4
+errorbar.capsize : 3
 
 # Remove legend frame
 legend.frameon : True
@@ -47,6 +47,7 @@ legend.fancybox : True
 legend.shadow : True
 legend.framealpha: 1
 legend.facecolor : white
+legend.fontsize: 10
 
 # Always save as 'tight'
 savefig.bbox : tight

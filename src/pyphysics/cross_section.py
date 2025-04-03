@@ -19,13 +19,54 @@ class Comparator:
     def add_model(self, key: str, file: str) -> None:
         data = parse_txt(file)
         self.fModels[key] = data
+        ## And parse theoretical data
+        self._parse_theoretical(key)
+
+    def _parse_theoretical(self, key: str) -> None:
+        """
+        This function parses the model data and builds and spline3 with knot data
+        integrated in the experimental bin width
+        """
+        ## Initial spline with X axis in radians!
+        xtheo = np.deg2rad(self.fModels[key][:, 0])
+        spline = create_spline3(xtheo, self.fModels[key][:, 1])
+        ## Theoretical boundaries
+        tMin, tMax = xtheo.min(), xtheo.max()
+        ## Experimental settings
+        eMin, _ = self.fExp[:, 0].min(), self.fExp[:, 0].max()
+        if len(self.fExp[:, 0]) > 1:
+            eBW = self.fExp[1, 0] - self.fExp[0, 0]
+        else:
+            eBW = 1
+        # Convert to radians
+        eMin = np.deg2rad(eMin)
+        eBW = np.deg2rad(eBW)
+        # Find starting point
+        start = 0
+        for x in np.arange(eMin, tMin, -eBW):
+            start = x
+        # And build binned theoretical graph!
+        binnedx = []
+        binnedy = []
+        for x in np.arange(start, tMax, eBW):
+            # Boundaries in rads!
+            low = x - eBW / 2
+            up = x + eBW / 2
+            integral = spline.integrate(low, up) / eBW
+            binnedx.append(np.rad2deg(x))
+            binnedy.append(integral)
+        # And replace contents with this
+        self.fModels[key] = np.column_stack((binnedx, binnedy))
+        # And build spline
+        self.fSplines[key] = create_spline3(
+            self.fModels[key][:, 0], self.fModels[key][:, 1]
+        )
+        return
 
     def _build_model(self, key: str) -> lm.Model:
-        spline = create_spline3(self.fModels[key][:, 0], self.fModels[key][:, 1])
-        self.fSplines[key] = spline
-
+        # Model to eval
         def eval(x, sf):
-            return sf * spline(x)
+            return sf * self.fSplines[key](x)
 
         model = lm.Model(eval)
         return model
@@ -45,11 +86,22 @@ class Comparator:
     def fit(self, show: bool = False) -> None:
         ## Weighted fit or not
         shape = self.fExp.shape[1]
-        weights = (1.0 / self.fExp[:, 2] ** 2) if shape == 3 else None
+        # INFO: weights are ^2 in the built-in chi2, because it does
+        # ((exp - fit) * weight)^2 !
+        weights = (1.0 / self.fExp[:, 2]) if shape == 3 else None
+        # print(weights)
         for key, _ in self.fModels.items():
             # Declare model
             model = self._build_model(key)
-            res = model.fit(self.fExp[:, 1], x=self.fExp[:, 0], weights=weights, sf=1)
+            # INFO: pass scale_cover=False to have reliable error estimation
+            # With this, results are exactly as ROOT's
+            res = model.fit(
+                self.fExp[:, 1],
+                x=self.fExp[:, 0],
+                weights=weights,
+                sf=1,
+                scale_covar=False,
+            )
             # Build fitted graph
             self._build_fitted(key, res)
             # And add SF
