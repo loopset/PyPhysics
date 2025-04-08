@@ -1,5 +1,8 @@
 from ctypes import ArgumentError
+import matplotlib
 import numpy as np
+import matplotlib.axes as mplaxes
+import matplotlib.pyplot as plt
 
 import lmfit as lm
 import uncertainties as un
@@ -122,7 +125,7 @@ class Comparator:
             it = next(iter(self.fFitted))
             return it
         if key in self.fFitted:
-            return self.fFitted[key]
+            return key
         else:
             raise ArgumentError(f"annot locate key: {key} in dict")
 
@@ -137,3 +140,28 @@ class Comparator:
     def get_sf(self, key: str = "") -> un.UFloat:
         k = self._get_key(key)
         return self.fSFs[k]
+
+    def draw(self, ax: mplaxes.Axes | None) -> None:
+        if ax is None:
+            return
+        ax.errorbar(
+            self.fExp[:, 0],
+            self.fExp[:, 1],
+            yerr=np.where(self.fExp.shape[1] == 3, self.fExp[:, 2], 0),
+            marker="s",
+            ls="none",
+            label="Exp.",
+        )
+        if len(self.fFitted):
+            for key, fit in self.fFitted.items():
+                label = rf"{key} $\Rightarrow$ SF = {self.fSFs[key]:.2uS}"
+                ax.plot(fit[:, 0], fit[:, 1], marker="none", lw=2, label=label)
+        ax.legend(fontsize=12)
+        # Ranges
+        xmin = np.min(self.fExp[:, 0])
+        xmax = np.max(self.fExp[:, 0])
+        xoff = 3
+        ax.set_xlim(max(0, xmin - xoff), xmax + xoff)
+        # Titles
+        ax.set_xlabel(r"$\theta_{\mathrm{CM}}$ [$^{\circ}$]", fontsize=16)
+        ax.set_ylabel(r"d$\sigma$/d$\Omega$ [mb/sr]", fontsize=16)

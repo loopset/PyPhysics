@@ -52,8 +52,10 @@ def create_trans_imshow(
 
     return (xtrans, ytrans)
 
+
 def create_interp1d(x, y) -> interp1d:
     return interp1d(x, y)
+
 
 def find_root(func, y, interval: list | None = None) -> float:
     finder = root_scalar(lambda x: func(x) - y, bracket=interval)
@@ -61,4 +63,3 @@ def find_root(func, y, interval: list | None = None) -> float:
         return finder.root
     else:
         raise ValueError("Cannot determine root")
-
