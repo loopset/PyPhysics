@@ -141,7 +141,7 @@ class Comparator:
         k = self._get_key(key)
         return self.fSFs[k]
 
-    def draw(self, ax: mplaxes.Axes | None) -> None:
+    def draw(self, ax: mplaxes.Axes | None, title: str | None = None) -> None:
         if ax is None:
             return
         ax.errorbar(
@@ -155,8 +155,23 @@ class Comparator:
         if len(self.fFitted):
             for key, fit in self.fFitted.items():
                 label = rf"{key} $\Rightarrow$ SF = {self.fSFs[key]:.2uS}"
-                ax.plot(fit[:, 0], fit[:, 1], marker="none", lw=2, label=label)
-        ax.legend(fontsize=12)
+                finex = np.linspace(fit[:, 0].min(), fit[:, 0].max(), len(fit) * 4)
+                ax.plot(
+                    finex,
+                    self.fFitSplines[key](finex),
+                    marker="none",
+                    lw=2,
+                    label=label,
+                )
+        ncols = int((len(self.fFitted) + 1) / 7) + 1
+        ax.legend(
+            fontsize=12 - (ncols - 1) * 2,
+            ncol=ncols,
+            frameon=True,
+            framealpha=0.75,
+            edgecolor="w",
+            shadow=False,
+        )
         # Ranges
         xmin = np.min(self.fExp[:, 0])
         xmax = np.max(self.fExp[:, 0])
@@ -165,3 +180,5 @@ class Comparator:
         # Titles
         ax.set_xlabel(r"$\theta_{\mathrm{CM}}$ [$^{\circ}$]", fontsize=16)
         ax.set_ylabel(r"d$\sigma$/d$\Omega$ [mb/sr]", fontsize=16)
+        if title is not None:
+            ax.set_title(title, fontsize=18)

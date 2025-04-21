@@ -9,6 +9,7 @@ from .particle import Particle
 from .cross_section import Comparator
 from .bernstein import Radii, Diffuseness, Bernstein, BE_to_beta, simple_bernstein
 from .root_interface import parse_tgraph
+from .actroot_interface import DataManInterface, TPCInterface
 
 # Automatically set style
 import os
