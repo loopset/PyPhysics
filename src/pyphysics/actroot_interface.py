@@ -1,8 +1,9 @@
-from hist.axis import Regular
 import numpy as np
 import hist
-
+import matplotlib.pyplot as plt
 import ROOT as r  # type: ignore
+
+from pyphysics.root_interface import parse_tgraph
 
 
 class DataManInterface:
@@ -81,6 +82,57 @@ class TPCInterface:
         axes = {"xy": ("X", "Y"), "xz": ("X", "Z"), "yz": ("Y", "Z")}
         if proj not in axes:
             raise ValueError("Invalid projection")
-        args = dict(cmin = 1, cmax = 7000, cmap="managua_r")
+        args = dict(cmin=1, cmax=7000, cmap="managua_r")
         args.update(kwargs)
         self.fHist.project(*axes[proj]).plot(**args)  # type: ignore
+
+
+class LineInterface:
+    def __init__(self, line: object) -> None:
+        self.fPoint: np.ndarray = np.array(
+            [
+                line.GetPoint().X(),  # type: ignore
+                line.GetPoint().Y(),  # type: ignore
+                line.GetPoint().Z(),  # type: ignore
+            ]
+        )
+        self.fDir: np.ndarray = np.array(
+            [
+                line.GetDirection().Unit().X(),  # type: ignore
+                line.GetDirection().Unit().Y(),  # type: ignore
+                line.GetDirection().Unit().Z(),  # type: ignore
+            ]
+        )
+        return
+
+    def plot(self, proj: str = "xy", **kwargs) -> None:
+        x = np.array([0, 128])
+        t = (x - self.fPoint[0]) / self.fDir[0]
+        y = self.fPoint[1] + t * self.fDir[1]
+        z = self.fPoint[2] + t * self.fDir[2]
+        if proj == "xy":
+            plt.plot(x, y, **kwargs)
+        elif proj == "xz":
+            plt.plot(x, z, **kwargs)
+        elif proj == "yz":
+            plt.plot(y, z, **kwargs)
+        else:
+            raise ValueError("Invalid proj passed to plot")
+        return
+
+    def __str__(self) -> str:
+        return f"Dir: {self.fDir[0]:.2f}, {self.fDir[1]:.2f}, {self.fDir[2]:.2f}"
+
+
+class KinInterface:
+    def __init__(self, reac: str) -> None:
+        self.fKin = r.ActPhysics.Kinematics(reac)  # type: ignore
+        return
+
+    def plot_kin3(self, **kwargs) -> None:
+        graph = self.fKin.GetKinematicLine3()
+        data = parse_tgraph(graph)
+        args = dict()
+        args.update(**kwargs)
+        plt.plot(data[:, 0], data[:, 1], **args)
+        return
