@@ -14,7 +14,11 @@ from .actroot_interface import (
     TPCInterface,
     LineInterface,
     KinInterface,
+    FitInterface,
+    SFModel,
+    SFInterface,
 )
+from .theory import QuantumNumbers, ShellModelData, ShellModel
 
 # Automatically set style
 import os

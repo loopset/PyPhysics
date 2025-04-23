@@ -1,4 +1,5 @@
 import numpy as np
+import uncertainties as un
 import hist
 import matplotlib.pyplot as plt
 import ROOT as r  # type: ignore
@@ -136,3 +137,92 @@ class KinInterface:
         args.update(**kwargs)
         plt.plot(data[:, 0], data[:, 1], **args)
         return
+
+
+class FitInterface:
+    def __init__(self, file: str) -> None:
+        self.fEx = {}
+        self.fSigmas = {}
+
+        self._read(file)
+        return
+
+    def _read(self, file: str) -> None:
+        with r.TFile(file) as f:  # type: ignore
+            names = f.Get("ParNames")
+            res = f.Get("FitResult")
+            for i, name in enumerate(names):
+                state, par = name.split("_")
+                value = res.Parameter(i)
+                error = res.Error(i)
+                var = None
+                if error == 0:
+                    var = value
+                else:
+                    var = un.ufloat(value, error)
+                if par == "Mean":
+                    self.fEx[state] = var
+                if par == "Sigma":
+                    self.fSigmas[state] = var
+        return
+
+    def get(self, state: str) -> tuple:
+        if state in self.fEx and state in self.fSigmas:
+            return (self.fEx[state], self.fEx[state])
+        else:
+            return (None, None)
+
+
+class SFModel:
+    def __init__(self, name: str, sf: un.UFloat, chi: float) -> None:
+        self.fName = name
+        self.fSF = sf
+        self.fChi = chi
+        return
+
+    def __str__(self) -> str:
+        return f"--SF:\n  Model : {self.fName}\n  SF : {self.fSF:2uS}\n  Chi2 : {self.fChi:.4f}"
+
+
+class SFInterface:
+    def __init__(self, file: str) -> None:
+        self.fSFs = {}
+
+        self._read(file)
+        return
+
+    def _read(self, file: str) -> None:
+        with r.TFile(file) as f:  # type: ignore
+            keys = f.GetListOfKeys()
+            for key in keys:
+                name = key.GetName()
+                if "sfs" not in name:
+                    continue
+                state, _ = name.split("_")
+                lst = []
+                # Read data
+                collection = f.Get(name)
+                for model in collection.GetModels():
+                    sf = collection.Get(model)
+                    lst.append(
+                        SFModel(
+                            model, un.ufloat(sf.GetSF(), sf.GetUSF()), sf.GetChi2Red()
+                        )
+                    )
+                self.fSFs[state] = lst
+        return
+
+    def get(self, state: str) -> list:
+        if state in self.fSFs:
+            return self.fSFs[state]
+        else:
+            return []
+
+    def get_best(self, state: str) -> SFModel | None:
+        if state in self.fSFs:
+            if not len(self.fSFs[state]):
+                return None
+            self.fSFs[state].sort(key=lambda sf: sf.fChi)
+            return self.fSFs[state][0]
+        else:
+            return None

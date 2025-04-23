@@ -51,7 +51,7 @@ legend.fontsize: 10
 
 # Always save as 'tight'
 savefig.bbox : tight
-savefig.pad_inches : 0.05
+savefig.pad_inches : 0.1
 
 # Use serif fonts
 text.usetex : True
