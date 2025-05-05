@@ -1,10 +1,12 @@
 import numpy as np
 import uncertainties as un
+import uncertainties.unumpy as unp
 import hist
 import matplotlib.pyplot as plt
+from functools import partial
 import ROOT as r  # type: ignore
 
-from pyphysics.root_interface import parse_tgraph
+from pyphysics.root_interface import parse_tgraph, parse_th1
 
 
 class DataManInterface:
@@ -143,6 +145,11 @@ class FitInterface:
     def __init__(self, file: str) -> None:
         self.fEx = {}
         self.fSigmas = {}
+        self.fAmps = {}
+        self.fLgs = {}
+        self.fGlobal: np.ndarray | None = None
+        self.fFuncs = {}
+        self.fHistPS = {}
 
         self._read(file)
         return
@@ -160,10 +167,54 @@ class FitInterface:
                     var = value
                 else:
                     var = un.ufloat(value, error)
+                if par == "Amp":
+                    self.fAmps[state] = var
                 if par == "Mean":
                     self.fEx[state] = var
                 if par == "Sigma":
                     self.fSigmas[state] = var
+                if par == "Lg":
+                    self.fLgs[state] = var
+            # Global fit
+            self.fGlobal = parse_tgraph(f.Get("GraphGlobal"))
+            # Functions
+            self._init_funcs()
+            # PS histograms
+            for obj in f.Get("HistoPeaks"):
+                name = obj.GetName()
+                if "ps" in name:
+                    h = parse_th1(obj)
+                    self.fHistPS[name[1:]] = h
+
+        return
+
+    def _init_funcs(self) -> None:
+        def gaus(x, amp, mean, sigma):
+            if isinstance(x, (float, int)):
+                x = [x]
+            return [amp * r.TMath.Gaus(e, mean, sigma) for e in x]  # type: ignore
+
+        # to transform ROOT's gauss into scipy's: * sqrt(2pi)sigma
+        # I didnt find a way of correlating root and scipy voigt
+
+        def voigt(x, amp, mean, sigma, lg):
+            if isinstance(x, (float, int)):
+                x = [x]
+            return [amp * r.TMath.Voigt(e - mean, sigma, lg) for e in x]  # type: ignore
+
+        for key, amp in self.fAmps.items():
+            a = unp.nominal_values(amp)
+            if "g" in key:  # gaussian
+                mean = unp.nominal_values(self.fEx[key])
+                sigma = unp.nominal_values(self.fSigmas[key])
+                self.fFuncs[key] = partial(gaus, amp=a, mean=mean, sigma=sigma)
+            if "v" in key:  # voigt
+                mean = unp.nominal_values(self.fEx[key])
+                sigma = unp.nominal_values(self.fSigmas[key])
+                lg = unp.nominal_values(self.fLgs[key])
+                self.fFuncs[key] = partial(voigt, amp=a, mean=mean, sigma=sigma, lg=lg)
+            if "cte" in key or "ps" in key:  ## cte or PS
+                self.fFuncs[key] = a
         return
 
     def get(self, state: str) -> tuple:
@@ -171,6 +222,34 @@ class FitInterface:
             return (self.fEx[state], self.fEx[state])
         else:
             return (None, None)
+
+    def plot_global(self, **kwargs) -> None:
+        if self.fGlobal is None:
+            return
+        args = dict(color="red")
+        args.update(kwargs)
+        plt.plot(self.fGlobal[:, 0], self.fGlobal[:, 1], **args)  # type: ignore
+
+    def plot_func(
+        self, key: str, nbins: int, xmin: float, xmax: float, **kwargs
+    ) -> None:
+        if key not in self.fFuncs:
+            return
+        if "g" not in key and "v" not in key:
+            print("Do not use plot_func for funcs other than gaus or voigt")
+            return
+        h = hist.Hist.new.Reg(nbins, xmin, xmax).Double()
+        # Fill histogram
+        for i, x in enumerate(h.axes[0].centers):
+            vals = self.fFuncs[key](x)
+            h[i] = vals[0]
+        args = dict(histtype="step", yerr=False, flow=None)
+        args.update(kwargs)
+        h.plot(**args)  # type: ignore
+        # # Fill function
+        # x = np.linspace(-5, 20, 500)
+        # y = self.fFuncs[key](x)
+        # plt.plot(x, y, color="orange")
 
 
 class SFModel:
