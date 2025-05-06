@@ -2,11 +2,13 @@ import numpy as np
 import uncertainties as un
 import uncertainties.unumpy as unp
 import hist
+import matplotlib.axes as mplaxes
 import matplotlib.pyplot as plt
 from functools import partial
 import ROOT as r  # type: ignore
 
 from pyphysics.root_interface import parse_tgraph, parse_th1
+from pyphysics.utils import create_spline3
 
 
 class DataManInterface:
@@ -253,19 +255,26 @@ class FitInterface:
 
 
 class SFModel:
-    def __init__(self, name: str, sf: un.UFloat, chi: float) -> None:
+    def __init__(
+        self, name: str, sf: un.UFloat, chi: float, g: np.ndarray | None = None
+    ) -> None:
         self.fName = name
         self.fSF = sf
         self.fChi = chi
+        self.fGraph = g
         return
 
     def __str__(self) -> str:
         return f"--SF:\n  Model : {self.fName}\n  SF : {self.fSF:2uS}\n  Chi2 : {self.fChi:.4f}"
 
+    def __repr__(self) -> str:
+        return f"SFModel ({self.fName}, {self.fSF}, {self.fChi})"
+
 
 class SFInterface:
     def __init__(self, file: str) -> None:
         self.fSFs = {}
+        self.fExps = {}
 
         self._read(file)
         return
@@ -273,22 +282,48 @@ class SFInterface:
     def _read(self, file: str) -> None:
         with r.TFile(file) as f:  # type: ignore
             keys = f.GetListOfKeys()
+            # 1-> Search for unique states
+            states = set()
             for key in keys:
                 name = key.GetName()
                 if "sfs" not in name:
                     continue
                 state, _ = name.split("_")
+                states.add(state)
+            # 2-> Iterate over states
+            states = list(states)
+            states = sorted(states, key=lambda x: (x[0] != "g", int(x[1:])))
+            for state in states:
+                # SFs from collection
+                col = f.Get(f"{state}_sfs")
+                ## Graphs from mg
+                gs = f.Get(f"{state}_mg")
+                # List of models
                 lst = []
-                # Read data
-                collection = f.Get(name)
-                for model in collection.GetModels():
-                    sf = collection.Get(model)
+                for model in col.GetModels():
+                    sf = col.Get(model)
+                    # Find graph of model
+                    g = None
+                    for aux in gs.GetListOfGraphs():
+                        if aux.GetTitle() == model:
+                            g = parse_tgraph(aux)
+                            break
+                    # Create SFModel class
                     lst.append(
                         SFModel(
-                            model, un.ufloat(sf.GetSF(), sf.GetUSF()), sf.GetChi2Red()
+                            model,
+                            un.ufloat(sf.GetSF(), sf.GetUSF()),
+                            sf.GetChi2Red(),
+                            g,
                         )
                     )
+                # Append models
                 self.fSFs[state] = lst
+                # Add experimental graph for peak
+                for aux in gs.GetListOfGraphs():
+                    if aux.GetName() == f"xs{state}":
+                        self.fExps[state] = parse_tgraph(aux)
+                        break
         return
 
     def get(self, state: str) -> list:
@@ -305,3 +340,45 @@ class SFInterface:
             return self.fSFs[state][0]
         else:
             return None
+
+    def remove_model(self, state: str, name: str) -> None:
+        lst = self.fSFs.get(state)
+        if not lst:
+            return
+        lst[:] = [model for model in lst if model.fName != name]
+
+    def plot_exp(self, state: str, ax: mplaxes.Axes, **kwargs) -> None:
+        exp = self.fExps.get(state)
+        if exp is None:
+            return
+        args = {"color": "black", "marker": "s", "ms": 5, "ls": "none"}
+        args.update(kwargs)
+        ax.errorbar(exp[:, 0], exp[:, 1], yerr=exp[:, 2], **args)
+        # ax.set_xlabel(r"$\theta_{\mathrm{CM}}$ [$^{\circ}$]")
+        # ax.set_ylabel(r"$\mathrm{d}\sigma/\mathrm{d}\Omega$ [mb/sr]")
+        return
+
+    def plot_models(self, state: str, ax: mplaxes.Axes, **kwargs) -> list:
+        ret = []
+        models = self.fSFs.get(state)
+        exp = self.fExps.get(state)
+        if models is None or exp is None:
+            return ret
+        # X axis settings
+        # xmin = exp[:, 0].min()
+        # xmax = exp[:, 0].max()
+        # offset = 3
+        # xaxis = np.linspace(max(0, xmin - offset), xmax + offset, 200)
+        xaxis = np.linspace(0, 180, 800)
+        # Y axis settings
+        ymin = exp[:, 1].min()
+        ymax = exp[:, 1].max()
+        scale = 0.9
+        args: dict = {"marker": "none", "ls": "solid", "lw": 1.25}
+        args.update(kwargs)
+        for model in reversed(models):
+            g = model.fGraph
+            spe = create_spline3(g[:, 0], g[:, 1])
+            ret.append(ax.plot(xaxis, spe(xaxis), label=model.fName, **args)[0])
+            ax.set_ylim(ymin * (1 - scale), ymax * (1 + scale))
+        return ret

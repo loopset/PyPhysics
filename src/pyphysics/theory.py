@@ -54,6 +54,11 @@ class QuantumNumbers:
         ret = rf"{self.n}{QuantumNumbers.letters[self.l]}$_{{{frac}}}$"
         return ret
 
+    def format_simple(self) -> str:
+        frac = Fraction(self.j).limit_denominator()
+        ret = f"{self.n}{QuantumNumbers.letters[self.l]}{frac}"
+        return ret
+
     def degeneracy(self) -> int:
         return int(2 * self.j + 1)
 
@@ -133,7 +138,7 @@ class ShellModel:
         for key, vals in self.data.items():
             newlist = []
             for val in vals:
-                if val.Ex <= maxEx:
+                if unc.nominal_value(val.Ex) <= maxEx:
                     newlist.append(val)
             self.data[key] = newlist
         return
@@ -142,7 +147,7 @@ class ShellModel:
         for key, vals in self.data.items():
             newlist = []
             for val in vals:
-                if val.SF >= minSF:
+                if unc.nominal_value(val.SF) >= minSF:
                     newlist.append(val)
             self.data[key] = newlist
         return

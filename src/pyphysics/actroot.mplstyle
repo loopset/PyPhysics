@@ -42,12 +42,12 @@ lines.markersize : 6
 errorbar.capsize : 3
 
 # Remove legend frame
-legend.frameon : True
-legend.fancybox : True
-legend.shadow : True
+legend.frameon : False
+legend.fancybox : False
+legend.shadow : False
 legend.framealpha: 1
-legend.facecolor : white
-legend.fontsize: 10
+# legend.facecolor : white
+legend.fontsize: 14
 
 # Always save as 'tight'
 savefig.bbox : tight
