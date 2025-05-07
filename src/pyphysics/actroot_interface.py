@@ -374,7 +374,7 @@ class SFInterface:
         ymin = exp[:, 1].min()
         ymax = exp[:, 1].max()
         scale = 0.9
-        args: dict = {"marker": "none", "ls": "solid", "lw": 1.25}
+        args: dict = {"marker": "none", "lw": 1.25}
         args.update(kwargs)
         for model in reversed(models):
             g = model.fGraph

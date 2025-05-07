@@ -33,3 +33,9 @@ def parse_th1(h) -> hist.BaseHist | None:
         y.append(h.GetBinContent(i))
     ret.fill(x, weight=y)
     return ret
+
+def parse_tcutg(g) -> np.ndarray:
+    """
+    Just a wrapper to TCutG
+    """
+    return parse_tgraph(g)
