@@ -1,5 +1,7 @@
+from __future__ import annotations
 import pyphysics.theory as th
 import uncertainties as unc
+import pickle
 from typing import Dict, List
 
 
@@ -17,23 +19,23 @@ class BaragerRes:
         return f"-- BaragerRes --\n N-   : {self.NumRem}\n N+   : {self.NumAdd}\n D-   : {self.DenRem}\n D+   : {self.DenAdd}\n ESPE : {self.ESPE}"
 
     def do_adding(
-        self, q: th.QuantumNumbers, add: th.ShellModel, sn: float, scale: float = 1
+        self, q: th.QuantumNumbers, add: th.SMDataDict, sn: float, scale: float = 1
     ) -> None:
-        if q in add.data:
-            for state in add.data[q]:
+        if q in add:
+            for state in add[q]:
                 # Numerator
-                self.NumAdd += (2 * q.j + 1) * (scale * state.SF) * (state.Ex - sn)
+                self.NumAdd += (2 * q.j + 1) * (scale * state.SF) * (state.Ex - sn)  # type: ignore
                 # Denominator
-                self.DenAdd += (2 * q.j + 1) * (scale * state.SF)
+                self.DenAdd += (2 * q.j + 1) * (scale * state.SF)  # type: ignore
         return
 
     def do_removal(
-        self, q: th.QuantumNumbers, rem: th.ShellModel, sn: float, scale: float = 1
+        self, q: th.QuantumNumbers, rem: th.SMDataDict, sn: float, scale: float = 1
     ) -> None:
-        if q in rem.data:
-            for state in rem.data[q]:
-                self.NumRem += (scale * state.SF) * (-sn - state.Ex)
-                self.DenRem += scale * state.SF
+        if q in rem:
+            for state in rem[q]:
+                self.NumRem += (scale * state.SF) * (-sn - state.Ex)  # type: ignore
+                self.DenRem += scale * state.SF  # type: ignore
         return
 
     def do_espe(self) -> None:
@@ -46,8 +48,8 @@ class BaragerRes:
 
 class Barager:
     def __init__(self) -> None:
-        self.Rem: th.ShellModel | None = None
-        self.Add: th.ShellModel | None = None
+        self.Rem: th.SMDataDict | None = None
+        self.Add: th.SMDataDict | None = None
         self.SnRem: float = 0
         self.SnAdd: float = 0
         self.ScaleAdd: float = 1
@@ -55,14 +57,18 @@ class Barager:
         self.Results: Dict[th.QuantumNumbers, BaragerRes] = {}
         return
 
-    def set_removal(self, rem: th.ShellModel, sn: float, scale: float = 1) -> None:
-        self.Rem = rem
+    def set_removal(
+        self, rem: th.ShellModel | th.SMDataDict, sn: float, scale: float = 1
+    ) -> None:
+        self.Rem = rem.data if isinstance(rem, th.ShellModel) else rem
         self.SnRem = sn
         self.ScaleRem = scale
         return
 
-    def set_adding(self, add: th.ShellModel, sn: float, scale: float = 1) -> None:
-        self.Add = add
+    def set_adding(
+        self, add: th.ShellModel | th.SMDataDict, sn: float, scale: float = 1
+    ) -> None:
+        self.Add = add.data if isinstance(add, th.ShellModel) else add
         self.SnAdd = sn
         self.ScaleAdd = scale
         return
@@ -91,6 +97,12 @@ class Barager:
             return res
         return 0
 
+    def get_ESPE(self, q: th.QuantumNumbers) -> float | unc.UFloat | None:
+        res = self.Results.get(q)
+        if res is None:
+            return None
+        return res.ESPE
+
     def print(self) -> None:
         print("----- Barager -----")
         for q, val in self.Results.items():
@@ -98,3 +110,12 @@ class Barager:
             print(val)
         print("--------------------")
         return
+
+    def write(self, file: str) -> None:
+        with open(file, "wb") as f:
+            pickle.dump(self, f)
+
+    @classmethod
+    def read(cls, file: str) -> Barager:
+        with open(file, "rb") as f:
+            return pickle.load(f)

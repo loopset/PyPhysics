@@ -19,7 +19,7 @@ from .actroot_interface import (
     SFModel,
     SFInterface,
 )
-from .theory import QuantumNumbers, ShellModelData, ShellModel
+from .theory import QuantumNumbers, ShellModelData, ShellModel, SMDataDict
 
 # Automatically set style
 import os

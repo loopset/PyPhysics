@@ -1,6 +1,7 @@
 import uncertainties as unc
 from fractions import Fraction
 import re
+from typing import Dict, List
 
 
 class QuantumNumbers:
@@ -77,9 +78,13 @@ class ShellModelData:
         return f"Data:\n  Ex : {self.Ex:.2f}\n  SF : {self.SF:.2f}"
 
 
+# Alias
+SMDataDict = Dict[QuantumNumbers, List[ShellModelData]]
+
+
 class ShellModel:
     def __init__(self, files: list = []) -> None:
-        self.data: dict = {}
+        self.data: SMDataDict = {}
 
         if len(files):
             self.__buildFromFiles(files)
@@ -100,7 +105,7 @@ class ShellModel:
         # And substract it from states
         for _, sublist in self.data.items():
             for state in sublist:
-                state.Ex = state.Ex - self.BE
+                state.Ex = state.Ex - self.BE  # type: ignore
         return
 
     def __parse(self, file: str) -> dict:

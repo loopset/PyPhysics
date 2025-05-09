@@ -332,6 +332,14 @@ class SFInterface:
         else:
             return []
 
+    def get_model(self, state: str, model: str) -> SFModel | None:
+        if state not in self.fSFs:
+            return None
+        for m in self.fSFs[state]:
+            if m.fName == model:
+                return m
+        return None
+
     def get_best(self, state: str) -> SFModel | None:
         if state in self.fSFs:
             if not len(self.fSFs[state]):
