@@ -98,7 +98,8 @@ class ShellModel:
 
         # Determine binding energy
         maxSF = max(
-            [s for sublist in self.data.values() for s in sublist], key=lambda sm: sm.SF
+            [s for sublist in self.data.values() for s in sublist],
+            key=lambda sm: unc.nominal_value(sm.SF),
         )
         # print(maxSF)
         self.BE = maxSF.Ex
@@ -156,6 +157,14 @@ class ShellModel:
                     newlist.append(val)
             self.data[key] = newlist
         return
+
+    def sum_strength(self, q: QuantumNumbers) -> float | unc.UFloat:
+        """
+        Summed strength for the given quantum number
+        """
+        if self.data.get(q) is None:
+            return 0
+        return sum(pair.SF for pair in self.data[q])  # type: ignore
 
     def print(self) -> None:
         print("-- Shell Model --")

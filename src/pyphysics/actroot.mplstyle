@@ -53,8 +53,10 @@ legend.fontsize: 14
 savefig.bbox : tight
 savefig.pad_inches : 0.1
 
-# Use serif fonts
-text.usetex : True
-#text.latex.preamble:
-font.family : serif
-font.serif : Times
+# Use Times for text and math
+text.usetex : False
+# text.latex.preamble: \setlength{\parindent}{0pt}
+font.family: serif
+font.serif: Times New Roman
+mathtext.fontset: stix
+mathtext.rm: Times New Roman

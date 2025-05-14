@@ -5,6 +5,7 @@ import hist
 import matplotlib.axes as mplaxes
 import matplotlib.pyplot as plt
 from functools import partial
+from typing import List, Dict
 import ROOT as r  # type: ignore
 
 from pyphysics.root_interface import parse_tgraph, parse_th1
@@ -273,8 +274,8 @@ class SFModel:
 
 class SFInterface:
     def __init__(self, file: str) -> None:
-        self.fSFs = {}
-        self.fExps = {}
+        self.fSFs: Dict[str, List[SFModel]] = {}
+        self.fExps: Dict[str, np.ndarray] = {}
 
         self._read(file)
         return
@@ -326,7 +327,7 @@ class SFInterface:
                         break
         return
 
-    def get(self, state: str) -> list:
+    def get(self, state: str) -> List[SFModel]:
         if state in self.fSFs:
             return self.fSFs[state]
         else:
@@ -386,6 +387,8 @@ class SFInterface:
         args.update(kwargs)
         for model in reversed(models):
             g = model.fGraph
+            if g is None:
+                continue
             spe = create_spline3(g[:, 0], g[:, 1])
             ret.append(ax.plot(xaxis, spe(xaxis), label=model.fName, **args)[0])
             ax.set_ylim(ymin * (1 - scale), ymax * (1 + scale))
