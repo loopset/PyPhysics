@@ -20,6 +20,7 @@ from .actroot_interface import (
     SFInterface,
 )
 from .theory import QuantumNumbers, ShellModelData, ShellModel, SMDataDict
+from .energy_loss import EnergyLoss
 
 # Automatically set style
 import os
