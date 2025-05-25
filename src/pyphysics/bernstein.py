@@ -8,7 +8,7 @@ import math
 class Radii:
     def __init__(self, p: Particle):
         self.fPart: Particle = p
-        if self.fPart.fA >= 40:
+        if self.fPart.A >= 40:
             raise ValueError(
                 "Radii implementation only works for A < 40. Check the paper for A >= 40 parametrization"
             )
@@ -17,18 +17,18 @@ class Radii:
         return
 
     def _eval_radius(self, r0, r1, r2, r3) -> float:
-        a = self.fPart.fA
-        eps = (self.fPart.fN - self.fPart.fZ) / self.fPart.fA
+        a = self.fPart.A
+        eps = (self.fPart.N - self.fPart.Z) / self.fPart.A
         return r0 * a ** (1 / 3) + r1 + r2 * eps + r3 * eps**2
 
-    def _set_neutron(self) -> None:
+    def _set_neutron(self) -> float:
         r0 = 1.02
         r1 = 0.75
         r2 = 0.46
         r3 = 1.08
         return self._eval_radius(r0, r1, r2, r3)
 
-    def _set_proton(self) -> None:
+    def _set_proton(self) -> float:
         r0 = 1.03
         r1 = 0.79
         r2 = -1.07
@@ -42,7 +42,7 @@ class Radii:
 class Diffuseness:
     def __init__(self, p: Particle):
         self.fPart = p
-        if self.fPart.fN >= 28 or self.fPart.fZ >= 28:
+        if self.fPart.N >= 28 or self.fPart.Z >= 28:
             raise ValueError(
                 "Check eta parameter in _eval_s. Read the paper for further instructions"
             )
@@ -51,9 +51,9 @@ class Diffuseness:
         return
 
     def _eval_s(self, type: str, alpha, s1, s2, s3, s4, s5, s6) -> float:
-        a = self.fPart.fA
-        n = self.fPart.fN
-        z = self.fPart.fZ
+        a = self.fPart.A
+        n = self.fPart.N
+        z = self.fPart.Z
 
         ## Eta parameter
         if type != "n" and type != "p":
@@ -89,7 +89,7 @@ class Diffuseness:
         s6 = 0
         alpha = -1
         # in case of odd number of neutrons
-        if not (self.fPart.fN % 2 == 0):
+        if not (self.fPart.N % 2 == 0):
             s4 *= -1
         sn = self._eval_s("n", alpha, s1, s2, s3, s4, s5, s6)
         mass = physical_constants["neutron mass energy equivalent in MeV"][0]
@@ -104,7 +104,7 @@ class Diffuseness:
         s6 = 0.98
         alpha = 1
         # in case of odd number of protons
-        if not (self.fPart.fZ % 2 == 0):
+        if not (self.fPart.Z % 2 == 0):
             s4 *= -1
         sp = self._eval_s("p", alpha, s1, s2, s3, s4, s5, s6)
         mass = physical_constants["proton mass energy equivalent in MeV"][0]
@@ -139,11 +139,11 @@ class Bernstein:
             * (self.fRadii.fRp / self.fRadii.fRn)
         )
         ret *= (
-            self.fDefNuclear
+            self.fDefNuclear  # type: ignore
             / self.fDefEm
             * self.fDiffu.fap
             / self.a
-            * (1 + self.fPart.fN / self.fPart.fZ * 1 / self.fbpbn)
+            * (1 + self.fPart.N / self.fPart.Z * 1 / self.fbpbn)
             - 1
         )
         return ret
@@ -170,7 +170,7 @@ def BE_to_beta(
     """
     This function converts a B(EL) to betaL
     """
-    r = 1.2 * p.fA ** (1.0 / 3)
+    r = 1.2 * p.A ** (1.0 / 3)
     if not isUp:
         # Multiply by spin factor, assuming decay is to ground state!
         factor = (2 * l + 1) / (2 * lgs + 1)

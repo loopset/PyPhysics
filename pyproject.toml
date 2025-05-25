@@ -1,0 +1,26 @@
+[project]
+name = "pyphysics"
+version = "2025.1.0"
+description = "Basic tools for nuclear physics analysis"
+authors = [
+    { name="M. Lozano-González", email="miguellozano.gonzalez@usc.gal" }
+]
+readme = "README.md"
+requires-python = ">=3.10"
+
+dependencies = [
+    "numpy",
+    "matplotlib",
+    "scipy",
+    "lmfit",
+    "uncertainties",
+    "hist",
+    "vector",
+]
+
+[project.optional-dependencies]
+root = ["uproot"]
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"

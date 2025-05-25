@@ -6,7 +6,8 @@ from typing import Dict, List
 
 class EnergyLoss:
     """
-    A class that read SRIM files and performs interpolations
+    A class that reads SRIM  files and performs interpolations.
+    TODO: add other input files
     """
 
     def __init__(self, cubic: bool = True) -> None:

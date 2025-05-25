@@ -1,4 +1,3 @@
-from ctypes import ArgumentError
 import matplotlib
 import numpy as np
 import matplotlib.axes as mplaxes
@@ -120,14 +119,14 @@ class Comparator:
 
     def _get_key(self, key: str) -> str:
         if len(self.fFitted) == 0:
-            raise ArgumentError("fitted array is empty! call fit method")
+            raise ValueError("fitted array is empty! call fit method")
         if len(key) == 0:  # return first element, regardless of size of keys > 0
             it = next(iter(self.fFitted))
             return it
         if key in self.fFitted:
             return key
         else:
-            raise ArgumentError(f"annot locate key: {key} in dict")
+            raise ValueError(f"annot locate key: {key} in dict")
 
     def get_fitted(self, key: str = "") -> np.ndarray:
         k = self._get_key(key)
