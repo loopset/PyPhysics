@@ -48,6 +48,7 @@ legend.shadow : False
 legend.framealpha: 1
 # legend.facecolor : white
 legend.fontsize: 14
+legend.title_fontsize: 16
 
 # Always save as 'tight'
 savefig.bbox : tight

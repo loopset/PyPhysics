@@ -77,6 +77,9 @@ class ShellModelData:
     def __str__(self) -> str:
         return f"Data:\n  Ex : {self.Ex:.2f}\n  SF : {self.SF:.2f}"
 
+    def __repr__(self) -> str:
+        return f"SMData(Ex: {self.Ex:.2f}, SF: {self.SF:.2f})"
+
 
 # Alias
 SMDataDict = Dict[QuantumNumbers, List[ShellModelData]]
