@@ -5,7 +5,7 @@ import hist
 import matplotlib.axes as mplaxes
 import matplotlib.pyplot as plt
 from functools import partial
-from typing import List, Dict
+from typing import List, Dict, Tuple
 import ROOT as r  # type: ignore
 
 from pyphysics.root_interface import parse_tgraph, parse_th1
@@ -64,7 +64,9 @@ class DataManInterface:
 
 
 class TPCInterface:
-    def __init__(self, tpc: object, dims: tuple = (128, 128, 128)) -> None:
+    def __init__(
+        self, tpc: object, dims: Tuple[int, int, int] = (128, 128, 128)
+    ) -> None:
         self.fHist = (
             hist.Hist.new.Regular(dims[0], 0, dims[0], name="X", label="X [pads]")
             .Regular(dims[1], 0, dims[1], name="Y", label="Y [pads]")
