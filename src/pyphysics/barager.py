@@ -2,6 +2,7 @@ from __future__ import annotations
 import pyphysics.theory as th
 import uncertainties as unc
 import pickle
+import numpy as np
 from typing import Dict, List
 
 
@@ -43,7 +44,11 @@ class BaragerRes:
             self.ESPE = (self.NumAdd + self.NumRem) / (self.DenAdd + self.DenRem)  # type: ignore
         except ZeroDivisionError:
             print("Barager:do_spe() got a zero in denominator. Check your inputs")
+            self.ESPE = np.nan
         return
+
+    def get_ESPE(self) -> float | unc.UFloat:
+        return self.ESPE
 
 
 class Barager:

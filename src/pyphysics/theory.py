@@ -60,6 +60,10 @@ class QuantumNumbers:
         ret = f"{self.n}{QuantumNumbers.letters[self.l]}{frac}"
         return ret
 
+    def get_j_fraction(self) -> str:
+        frac = Fraction(self.j).limit_denominator()
+        return f"{frac}"
+
     def degeneracy(self) -> int:
         return int(2 * self.j + 1)
 
