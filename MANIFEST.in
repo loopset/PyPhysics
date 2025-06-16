@@ -1,0 +1,2 @@
+recursive-include pyphysics/data *.txt
+include pyphysics/*.mplstyle
