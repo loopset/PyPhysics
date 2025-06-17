@@ -5,7 +5,7 @@ import hist
 import matplotlib.axes as mplaxes
 import matplotlib.pyplot as plt
 from functools import partial
-from typing import List, Dict, Tuple
+from typing import Any, Callable, List, Dict, Tuple, Union
 import ROOT as r  # type: ignore
 
 from pyphysics.root_interface import parse_tgraph, parse_th1
@@ -148,13 +148,15 @@ class KinInterface:
 
 class FitInterface:
     def __init__(self, file: str) -> None:
-        self.fEx = {}
-        self.fSigmas = {}
-        self.fAmps = {}
-        self.fLgs = {}
+        self.fEx: Dict[str, Union[float, un.UFloat]] = {}
+        self.fSigmas: Dict[str, Union[float, un.UFloat]] = {}
+        self.fAmps: Dict[str, Union[float, un.UFloat]] = {}
+        self.fLgs: Dict[str, Union[float, un.UFloat]] = {}
         self.fGlobal: np.ndarray | None = None
-        self.fFuncs = {}
-        self.fHistPS = {}
+        self.fFuncs: Dict[str, Callable[..., Any]] = {}
+        self.fHistPS: Dict[str, hist.BaseHist] = {}
+        self.fChi: float = 0
+        self.fNdof: int = 0
 
         self._read(file)
         return
@@ -180,6 +182,9 @@ class FitInterface:
                     self.fSigmas[state] = var
                 if par == "Lg":
                     self.fLgs[state] = var
+            # Parameters of fit
+            self.fChi = res.Chi2()
+            self.fNdof = res.Ndf()
             # Global fit
             self.fGlobal = parse_tgraph(f.Get("GraphGlobal"))
             # Functions
@@ -189,7 +194,8 @@ class FitInterface:
                 name = obj.GetName()
                 if "ps" in name:
                     h = parse_th1(obj)
-                    self.fHistPS[name[1:]] = h
+                    if h is not None:
+                        self.fHistPS[name[1:]] = h
 
         return
 
@@ -219,7 +225,7 @@ class FitInterface:
                 lg = unp.nominal_values(self.fLgs[key])
                 self.fFuncs[key] = partial(voigt, amp=a, mean=mean, sigma=sigma, lg=lg)
             if "cte" in key or "ps" in key:  ## cte or PS
-                self.fFuncs[key] = a
+                self.fFuncs[key] = a  # type: ignore
         return
 
     def get(self, state: str) -> tuple:
