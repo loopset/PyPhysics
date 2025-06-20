@@ -147,7 +147,7 @@ class KinInterface:
 
 
 class FitInterface:
-    def __init__(self, file: str) -> None:
+    def __init__(self, file: str, simple: bool = False) -> None:
         self.fEx: Dict[str, Union[float, un.UFloat]] = {}
         self.fSigmas: Dict[str, Union[float, un.UFloat]] = {}
         self.fAmps: Dict[str, Union[float, un.UFloat]] = {}
@@ -158,13 +158,16 @@ class FitInterface:
         self.fChi: float = 0
         self.fNdof: int = 0
 
-        self._read(file)
+        self._read(file, simple)
         return
 
-    def _read(self, file: str) -> None:
+    def _read(self, file: str, simple: bool) -> None:
         with r.TFile(file) as f:  # type: ignore
             names = f.Get("ParNames")
             res = f.Get("FitResult")
+            # Parameters of fit
+            self.fChi = res.Chi2()
+            self.fNdof = res.Ndf()
             for i, name in enumerate(names):
                 state, par = name.split("_")
                 value = res.Parameter(i)
@@ -182,9 +185,9 @@ class FitInterface:
                     self.fSigmas[state] = var
                 if par == "Lg":
                     self.fLgs[state] = var
-            # Parameters of fit
-            self.fChi = res.Chi2()
-            self.fNdof = res.Ndf()
+            # If simple, exist here
+            if simple:
+                return
             # Global fit
             self.fGlobal = parse_tgraph(f.Get("GraphGlobal"))
             # Functions
