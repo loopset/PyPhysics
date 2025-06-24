@@ -4,6 +4,8 @@ from scipy.constants import physical_constants
 utoMeV = physical_constants["atomic mass constant energy equivalent in MeV"][0]
 emassKg = physical_constants["electron mass"][0]
 emassU = emassKg / physical_constants["atomic mass constant"][0]
+nmass = physical_constants["neutron mass energy equivalent in MeV"][0]
+pmass = physical_constants["proton mass energy equivalent in MeV"][0]
 
 
 class Particle:
@@ -89,3 +91,23 @@ class Particle:
 
     def __repr__(self) -> str:
         return f"Particle (A, Z, N) = ({self.A}, {self.Z}, {self.N})"
+
+    def _get_spX(self, x: int) -> float:
+        aux = Particle.from_numbers(self.A - x, self.Z - x)
+        return aux.mass + x * pmass - self.mass
+
+    def _get_snX(self, x: int) -> float:
+        aux = Particle.from_numbers(self.A - x, self.Z)
+        return aux.mass + x * nmass - self.mass
+
+    def get_sn(self) -> float:
+        return self._get_snX(1)
+
+    def get_s2n(self) -> float:
+        return self._get_snX(2)
+
+    def get_sp(self) -> float:
+        return self._get_spX(1)
+
+    def get_s2p(self) -> float:
+        return self._get_spX(2)

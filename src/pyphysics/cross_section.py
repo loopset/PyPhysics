@@ -1,5 +1,4 @@
-from typing import Dict
-import matplotlib
+from typing import Callable, Dict, Union
 import numpy as np
 import matplotlib.axes as mplaxes
 import matplotlib.pyplot as plt
@@ -12,11 +11,11 @@ from pyphysics.utils import parse_txt, create_spline3
 class Comparator:
     def __init__(self, xy: np.ndarray) -> None:
         self.fExp = xy  # Experimental data
-        self.fModels: dict = {}  # Model data
-        self.fSplines: dict = {}  # Model splines
-        self.fFitted: dict = {}  # Fitted data
-        self.fFitSplines: dict = {}  # Fitted splines
-        self.fSFs: dict = {}  # SF values
+        self.fModels: Dict[str, np.ndarray] = {}  # Model data
+        self.fSplines: Dict[str, Callable] = {}  # Model splines
+        self.fFitted: Dict[str, np.ndarray] = {}  # Fitted data
+        self.fFitSplines: Dict[str, Callable] = {}  # Fitted splines
+        self.fSFs: Dict[str, Union[float, un.UFloat]] = {}  # SF values
         return
 
     def add_models(self, files: Dict[str, str]) -> None:
@@ -118,7 +117,7 @@ class Comparator:
             if hasattr(res, "uvars"):
                 self.fSFs[key] = res.uvars["sf"]
             else:
-                self.fSFs[key] = un.ufloat(res.params["sf"], 0)
+                self.fSFs[key] = res.params["sf"].value
             # And print!
             if show:
                 print(f"---- Comparator::Fit() for {key}")
@@ -144,24 +143,29 @@ class Comparator:
         k = self._get_key(key)
         return self.fFitSplines[k](x)
 
-    def get_sf(self, key: str = "") -> un.UFloat:
+    def get_sf(self, key: str = "") -> float | un.UFloat:
         k = self._get_key(key)
         return self.fSFs[k]
 
-    def draw(self, ax: mplaxes.Axes | None, title: str | None = None) -> None:
+    def draw(self, ax: mplaxes.Axes | None = None, title: str | None = None) -> None:
         if ax is None:
-            return
+            ax = plt.gca()
         ax.errorbar(
             self.fExp[:, 0],
             self.fExp[:, 1],
-            yerr=np.where(self.fExp.shape[1] == 3, self.fExp[:, 2], 0),
+            yerr=self.fExp[:, 2] if self.fExp.shape[1] == 3 else None,
             marker="s",
             ls="none",
             label="Exp.",
         )
         if len(self.fFitted):
             for key, fit in self.fFitted.items():
-                label = rf"{key} $\Rightarrow$ SF = {self.fSFs[key]:.2uS}"
+                value = self.fSFs[key]
+                if isinstance(value, un.UFloat):
+                    strval = f"{value:.2uS}"
+                else:
+                    strval = f"{value:.2f}"
+                label = rf"{key} $\Rightarrow$ SF = {strval}"
                 finex = np.linspace(fit[:, 0].min(), fit[:, 0].max(), len(fit) * 4)
                 ax.plot(
                     finex,
