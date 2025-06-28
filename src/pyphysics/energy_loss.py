@@ -90,11 +90,11 @@ class EnergyLoss:
         """
         return self.sp_direct[key](energy).item()  # type: ignore
 
-    def eval_energy(self, key: str, range_: float) -> float:
+    def eval_energy(self, key: str, range: float) -> float:
         """
         Get energy given a range
         """
-        return self.sp_inverse[key](range_).item()  # type: ignore
+        return self.sp_inverse[key](range).item()  # type: ignore
 
     def eval_longstragg(self, key: str, range_: float) -> float:
         """
@@ -111,7 +111,7 @@ class EnergyLoss:
             return 0
         Tafter = self.eval_energy(key, Rafter)
         if Tafter > Tini:
-            return Tafter
+            return Tini
         return Tafter
 
     def slow_with_straggling(
@@ -125,12 +125,26 @@ class EnergyLoss:
         if Rafter <= 0:
             return 0
         uRafter = self.eval_longstragg(key, Rafter)
-        udist = np.sqrt(uRini ** 2 - uRafter ** 2)
+        udist = np.sqrt(uRini**2 - uRafter**2)
         dist = np.random.normal(dist, udist)
         Rafter = Rini - dist
         if Rafter <= 0:
             return 0
-        return self.eval_energy(key, Rafter)
+        Tafter = self.eval_energy(key, Rafter)
+        if Tafter > Tini:
+            return Tini
+        return Tafter
+
+    def eval_initial_energy(
+        self, key: str, Tafter: float, thick: float, angle: float = 0
+    ) -> float:
+        """
+        reconstruct initial energy of particle before propagating a distance
+        """
+        Rafter = self.eval_range(key, Tafter)
+        dist = thick / np.cos(angle)
+        Rini = Rafter + dist
+        return self.eval_energy(key, Rini)
 
     def draw(self) -> None:
         for key in self.keys:
