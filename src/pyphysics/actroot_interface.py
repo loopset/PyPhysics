@@ -401,6 +401,8 @@ class SFInterface:
             if g is None:
                 continue
             spe = create_spline3(g[:, 0], g[:, 1])
-            ret.append(ax.plot(xaxis, spe(xaxis), label=model.fName, **args)[0])
+            label = rf"{model.fName}"
+            label = label.replace("l", rf"$\ell$")
+            ret.append(ax.plot(xaxis, spe(xaxis), label=label, **args)[0])
             ax.set_ylim(ymin * (1 - scale), ymax * (1 + scale))
         return ret
