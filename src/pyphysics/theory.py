@@ -1,6 +1,10 @@
+from collections import defaultdict
 import uncertainties as unc
+import pandas as pd
 from fractions import Fraction
 import re
+import math
+import copy
 from typing import Dict, List
 
 
@@ -12,10 +16,11 @@ class QuantumNumbers:
 
     letters = {0: "s", 1: "p", 2: "d", 3: "f", 4: "g", 5: "h", 6: "i"}
 
-    def __init__(self, n: int, l: int, j: float) -> None:
+    def __init__(self, n: int, l: int, j: float, t: float = 0) -> None:
         self.n = n
         self.l = l
         self.j = j
+        self.t = t
         return
 
     @classmethod
@@ -39,16 +44,21 @@ class QuantumNumbers:
     def __eq__(self, other: object) -> bool:
         if not isinstance(other, QuantumNumbers):
             return NotImplemented
-        return self.n == other.n and self.l == other.l and self.j == other.j
+        return (
+            self.n == other.n
+            and self.l == other.l
+            and self.j == other.j
+            and self.t == other.t
+        )
 
     def __hash__(self) -> int:
-        return hash((self.n, self.l, self.j))
+        return hash((self.n, self.l, self.j, self.t))
 
     def __str__(self) -> str:
-        return f"Quantum number:\n n : {self.n}\n l : {self.l}\n j : {self.j}"
+        return f"Quantum number:\n n : {self.n}\n l : {self.l}\n j : {self.j}\n t : {self.t}"
 
     def __repr__(self) -> str:
-        return f"nlj:({self.n},{self.l},{self.j})"
+        return f"nljt:({self.n},{self.l},{self.j},{self.t})"
 
     def format(self) -> str:
         frac = Fraction(self.j).limit_denominator()
@@ -147,6 +157,46 @@ class ShellModel:
                         ret[q].append(sm)
         return ret
 
+    def add_isospin(self, file: str, df: pd.DataFrame | None = None) -> None:
+        newdict: SMDataDict = defaultdict(list)
+        # Parse summary file
+        with open(file, "r") as f:
+            for line in f:
+                if not line:
+                    continue
+                try:
+                    N = int(line[0:5])
+                except ValueError:
+                    continue
+                j = line[7:11]
+                # pi = +1 if line[12] == "+" else -1
+                t = line[21:25]
+                ex = line[37:45]
+                # Convert
+                j = float(Fraction(j))
+                t = float(Fraction(t))
+                ex = float(ex)
+                # If df is passed, get 2T from it
+                if df is not None:
+                    gated = df[df["index"] == N]
+                    if gated is not None and gated.shape[0] > 0:
+                        try:
+                            t = float(gated["2T"].iloc[0]) / 2  # type: ignore
+                        except ValueError:
+                            t = -1
+                # Find old key
+                for key, vals in self.data.items():
+                    for val in vals:
+                        if math.isclose(unc.nominal_value(val.Ex), ex, abs_tol=0.001):
+                            newkey = copy.deepcopy(
+                                key
+                            )  # otherwise we are modifying it inplace... python :(
+                            newkey.t = t
+                            newdict[newkey].append(val)
+        # Overwrite
+        self.data = newdict
+        return
+
     def set_max_Ex(self, maxEx: float) -> None:
         for key, vals in self.data.items():
             newlist = []
@@ -163,6 +213,19 @@ class ShellModel:
                 if unc.nominal_value(val.SF) >= minSF:
                     newlist.append(val)
             self.data[key] = newlist
+        return
+
+    def set_allowed_isospin(self, t: float) -> None:
+        """
+        Set allowed isospin number. For backwards compatibility, set t to 0
+        to avoid having to specify the t in all old code (0 is the default value in case no t is provided to Q)
+        """
+        self.data = {
+            QuantumNumbers(k.n, k.l, k.j): vals
+            for k, vals in self.data.items()
+            if k.t == t
+        }
+
         return
 
     def sum_strength(self, q: QuantumNumbers) -> float | unc.UFloat:
