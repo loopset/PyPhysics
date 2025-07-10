@@ -124,6 +124,7 @@ class ShellModel:
         for _, sublist in self.data.items():
             for state in sublist:
                 state.Ex = state.Ex - self.BE  # type: ignore
+                state.Ex = round(state.Ex, 3)
         return
 
     def __parse(self, file: str) -> dict:
@@ -187,7 +188,7 @@ class ShellModel:
                 # Find old key
                 for key, vals in self.data.items():
                     for val in vals:
-                        if math.isclose(unc.nominal_value(val.Ex), ex, abs_tol=0.001):
+                        if math.isclose(unc.nominal_value(val.Ex), ex, abs_tol=0.00105) and key.j == j:
                             newkey = copy.deepcopy(
                                 key
                             )  # otherwise we are modifying it inplace... python :(
