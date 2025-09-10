@@ -139,8 +139,12 @@ class Kinematics:
         y = np.empty_like(thetas)
         for i, cm in enumerate(thetas):
             self.get_kin_for(np.deg2rad(cm), 0)
-            x[i] = np.rad2deg(self.theta3)
-            y[i] = self.T3
+            if self.T3 > 1e-4: # not 0 to avoid numeric precision limitations
+                x[i] = np.rad2deg(self.theta3)
+                y[i] = self.T3
+            else:
+                x[i] = np.nan
+                y[i] = np.nan
         return (x, y)
 
     def get_line4(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -149,8 +153,12 @@ class Kinematics:
         y = np.empty_like(thetas)
         for i, cm in enumerate(thetas):
             self.get_kin_for(np.deg2rad(cm), 0)
-            x[i] = np.rad2deg(self.theta4)
-            y[i] = self.T4
+            if self.T4 > 1e-4:
+                x[i] = np.rad2deg(self.theta4)
+                y[i] = self.T4
+            else:
+                x[i] = np.nan
+                y[i] = np.nan
         return (x, y)
 
     def get_theta3_vs_4(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -159,8 +167,12 @@ class Kinematics:
         y = np.empty_like(thetas)
         for i, cm in enumerate(thetas):
             self.get_kin_for(np.deg2rad(cm), 0)
-            x[i] = np.rad2deg(self.theta3)
-            y[i] = np.rad2deg(self.theta4)
+            if self.T3 > 1e-4:
+                x[i] = np.rad2deg(self.theta3)
+                y[i] = np.rad2deg(self.theta4)
+            else:
+                x[i] = np.nan
+                y[i] = np.nan
         return (x, y)
 
     def get_lab_vs_cm(self) -> Tuple[np.ndarray, np.ndarray]:
@@ -169,8 +181,12 @@ class Kinematics:
         y = np.empty_like(thetas)
         for i, cm in enumerate(thetas):
             self.get_kin_for(np.deg2rad(cm), 0)
-            x[i] = cm
-            y[i] = np.rad2deg(self.theta3)
+            if self.T3 > 1e-4:
+                x[i] = cm
+                y[i] = np.rad2deg(self.theta3)
+            else:
+                x[i] = np.nan
+                y[i] = np.nan
         return (x, y)
 
     def draw(self) -> None:

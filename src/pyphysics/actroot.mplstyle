@@ -55,9 +55,10 @@ savefig.bbox : tight
 savefig.pad_inches : 0.1
 
 # Use Times for text and math
-text.usetex : False
-# text.latex.preamble: \setlength{\parindent}{0pt}
+# Plain text
 font.family: serif
-font.serif: Times New Roman
+font.serif: TeX Gyre Termes
+# TeX 
+text.usetex : False
 mathtext.fontset: stix
-mathtext.rm: Times New Roman
+mathtext.default: regular

@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.interpolate import CubicSpline, interp1d
 from scipy.optimize import root_scalar
+import hist
+import matplotlib.axes as mplaxes
 from typing import Callable
 
 
@@ -63,3 +65,31 @@ def find_root(func, y, interval: list | None = None) -> float:
         return finder.root
     else:
         raise ValueError("Cannot determine root")
+
+
+def set_hist_overflow(h: hist.BaseHist, overflow: float) -> None:
+    """
+    Sets real overflow of hist.Hist,
+    because histplot cmin/cmax sets it to None
+    """
+    contents = h.view(flow=True)
+    contents[contents > overflow] = overflow  # type: ignore
+    return None
+
+
+def annotate_subplots(axs: mplaxes.Axes | np.ndarray, x=0.125, y=0.925, color="black") -> None:
+    if isinstance(axs, mplaxes.Axes):
+        axs = np.array([axs])
+    for i, ax in enumerate(axs):
+        ax: mplaxes.Axes
+        ax.annotate(
+            chr(97 + i) + ")",
+            xy=(x, y),
+            xycoords="axes fraction",
+            ha="center",
+            va="center",
+            fontsize=18,
+            fontweight="bold",
+            color=color,
+        )
+    return None
