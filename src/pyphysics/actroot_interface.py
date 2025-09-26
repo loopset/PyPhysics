@@ -94,6 +94,33 @@ class TPCInterface:
         args.update(kwargs)
         self.fHist.project(*axes[proj]).plot(**args)  # type: ignore
 
+    def plot_3d(self, **kwargs) -> None:
+        vals = self.fHist.values()
+        ok = vals > 0
+        x, y, z = np.where(ok)
+        maxq = 2000
+        q = vals[x, y, z]
+        q = np.clip(q, None, maxq)
+        x = x + 0.5
+        y = y + 0.5
+        z = z + 0.5
+        # Get axis
+        ax = plt.gca()
+        ax.scatter(  # type: ignore
+            x,
+            y,
+            z,
+            c=q,
+            marker="o",
+            edgecolor="none",
+            linewidth=0.3,
+            # alpha=0.75,
+        )
+        ax.set_xlim(0, self.fHist.axes[0].edges[-1])  # type: ignore
+        ax.set_ylim(0, self.fHist.axes[1].edges[-1])  # type: ignore
+        ax.set_zlim(0, self.fHist.axes[2].edges[-1])  # type: ignore
+        return
+
 
 class LineInterface:
     def __init__(self, line: object) -> None:

@@ -92,7 +92,7 @@ class Comparator:
         self.fFitted[key] = np.column_stack((x, yeval))
         return
 
-    def fit(self, show: bool = False) -> None:
+    def fit(self, show: bool = False, scale_covar=False) -> None:
         ## Weighted fit or not
         shape = self.fExp.shape[1]
         # INFO: weights are ^2 in the built-in chi2, because it does
@@ -109,7 +109,7 @@ class Comparator:
                 x=self.fExp[:, 0],
                 weights=weights,
                 sf=1,
-                scale_covar=False,
+                scale_covar=scale_covar,
             )
             # Build fitted graph
             self._build_fitted(key, res)
