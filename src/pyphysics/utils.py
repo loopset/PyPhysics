@@ -3,7 +3,7 @@ from scipy.interpolate import CubicSpline, interp1d
 from scipy.optimize import root_scalar
 import hist
 import matplotlib.axes as mplaxes
-from typing import Callable
+from typing import Callable, List
 
 
 def parse_txt(file: str, ncols: int = 2) -> np.ndarray:
@@ -77,7 +77,7 @@ def set_hist_overflow(h: hist.BaseHist, overflow: float) -> None:
     return None
 
 
-def annotate_subplots(axs: mplaxes.Axes | np.ndarray, x=0.125, y=0.925, color="black") -> None:
+def annotate_subplots(axs: mplaxes.Axes | List | np.ndarray, x=0.125, y=0.925, color="black") -> None:
     if isinstance(axs, mplaxes.Axes):
         axs = np.array([axs])
     for i, ax in enumerate(axs):

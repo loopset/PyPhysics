@@ -11,6 +11,18 @@ def parse_tgraph(g) -> np.ndarray:
         return np.array(
             [[g.GetPointX(i), g.GetPointY(i), g.GetErrorY(i)] for i in range(g.GetN())]
         )
+    elif isinstance(g, r.TGraphAsymmErrors):  # type: ignore
+        return np.array(
+            [
+                [
+                    g.GetPointX(i),
+                    g.GetPointY(i),
+                    (g.GetErrorYhigh(i) + g.GetErrorYlow(i))
+                    / 2,  # in our case, they're always efficiencies with symmetric errors
+                ]
+                for i in range(g.GetN())
+            ]
+        )
     else:
         return np.array([[g.GetPointX(i), g.GetPointY(i)] for i in range(g.GetN())])
 
