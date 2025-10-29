@@ -1,8 +1,10 @@
+from collections import defaultdict
 import numpy as np
 import uncertainties as un
 import uncertainties.unumpy as unp
 import hist
 import matplotlib.axes as mplaxes
+import matplotlib.colors as mplcolors
 import matplotlib.pyplot as plt
 from functools import partial
 from typing import Any, Callable, List, Dict, Tuple, Union
@@ -10,6 +12,8 @@ import ROOT as r  # type: ignore
 
 from pyphysics.root_interface import parse_tgraph, parse_th1
 from pyphysics.utils import create_spline3
+from pyphysics.styling import sty_hist2d
+from pyphysics.utils import set_hist_overflow
 
 
 class DataManInterface:
@@ -63,16 +67,66 @@ class DataManInterface:
         return
 
 
+class LineInterface:
+    def __init__(self, line: object) -> None:
+        self.fPoint: np.ndarray = np.array(
+            [
+                line.GetPoint().X(),  # type: ignore
+                line.GetPoint().Y(),  # type: ignore
+                line.GetPoint().Z(),  # type: ignore
+            ]
+        )
+        self.fDir: np.ndarray = np.array(
+            [
+                line.GetDirection().Unit().X(),  # type: ignore
+                line.GetDirection().Unit().Y(),  # type: ignore
+                line.GetDirection().Unit().Z(),  # type: ignore
+            ]
+        )
+        return
+
+    def plot(
+        self, proj: str = "xy", xmin: float = 0, xmax: float = 128, **kwargs
+    ) -> None:
+        x = np.array([xmin, xmax])
+        t = (x - self.fPoint[0]) / self.fDir[0]
+        y = self.fPoint[1] + t * self.fDir[1]
+        z = self.fPoint[2] + t * self.fDir[2]
+        if proj == "xy":
+            plt.plot(x, y, **kwargs)
+        elif proj == "xz":
+            plt.plot(x, z, **kwargs)
+        elif proj == "yz":
+            plt.plot(y, z, **kwargs)
+        else:
+            raise ValueError("Invalid proj passed to plot")
+        return
+
+    def moveToX(self, x: float) -> List[float]:
+        t = (x - self.fPoint[0]) / self.fDir[0]
+        y = self.fPoint[1] + t * self.fDir[1]
+        z = self.fPoint[2] + t * self.fDir[2]
+        return [x, y, z]
+
+    def __str__(self) -> str:
+        return f"Point: {self.fPoint[0]:.2f}, {self.fPoint[1]:.2f}, {self.fPoint[2]:.2f}\nDir: {self.fDir[0]:.2f}, {self.fDir[1]:.2f}, {self.fDir[2]:.2f}"
+
+
 class TPCInterface:
     def __init__(
         self, tpc: object, dims: Tuple[int, int, int] = (128, 128, 128)
     ) -> None:
+        self.fVoxels: Dict[int, List[object]] = defaultdict(
+            list
+        )  # Vector of voxels per cluster or noise (-1)
         self.fHist = (
             hist.Hist.new.Regular(dims[0], 0, dims[0], name="X", label="X [pads]")
             .Regular(dims[1], 0, dims[1], name="Y", label="Y [pads]")
             .Regular(dims[2], 0, dims[2], name="Z", label="Z [btb]")
-        ).Double()
-        self._fill(tpc)
+        ).Double()  # 3D histogram with charge
+        self.fLines: Dict[int, LineInterface] = {}  # Dict with lines
+        self.fRP: List[float] = []
+        self._fill(tpc)  # Fill histograms and dicts
         return
 
     def _fill(self, tpc) -> None:
@@ -80,19 +134,101 @@ class TPCInterface:
         for v in tpc.fRaw:
             pos = v.GetPosition()
             self.fHist.fill(pos.X(), pos.Y(), pos.Z(), weight=v.GetCharge())
+            self.fVoxels[-1].append(v)
         # Clusters
         for c in tpc.fClusters:
             for v in c.GetVoxels():
                 pos = v.GetPosition()
                 self.fHist.fill(pos.X(), pos.Y(), pos.Z(), weight=v.GetCharge())
+                self.fVoxels[c.GetClusterID()].append(v)
+            # And also line
+            self.fLines[c.GetClusterID()] = LineInterface(c.GetLine())
+        # RP if any
+        if tpc.fRPs.size():
+            rp = tpc.fRPs.front()
+            self.fRP = [rp.X(), rp.Y(), rp.Z()]
 
-    def plot(self, proj: str = "xy", **kwargs) -> None:
+    def plot(
+        self,
+        proj: str = "xy",
+        isCluster: bool = False,
+        withNoise: bool = False,
+        **kwargs,
+    ) -> None:
         axes = {"xy": ("X", "Y"), "xz": ("X", "Z"), "yz": ("Y", "Z")}
         if proj not in axes:
             raise ValueError("Invalid projection")
-        args = dict(cmin=1, cmax=7000, cmap="managua_r")
+        # Maximum charge
+        maxq = 4096  # Until pad saturates
+        args = sty_hist2d
+        args.update({"cmax": maxq})
         args.update(kwargs)
-        self.fHist.project(*axes[proj]).plot(**args)  # type: ignore
+
+        # Plot projection of point cloud
+        if not isCluster:
+            h = self.fHist.project(*axes[proj])
+            set_hist_overflow(h, maxq)  # type: ignore
+            h.plot(**args)  # type: ignore
+            return
+
+        # Plot clusters
+        hcl = self._get_cluster_hist(proj)
+        C, x, y = hcl.to_numpy()  # type: ignore
+        cmax = len([k for k in self.fVoxels.keys() if k >= 0])
+        main_cmap = plt.cm.get_cmap(sty_hist2d.get("cmap"), cmax)
+        # Add white color to represent empty bins
+        colors = ["white"] + [main_cmap(i) for i in range(cmax)]
+        # And construct a listed color map with them
+        cmap = mplcolors.ListedColormap(colors)
+        # Set color for underflow bins: noise, which have been tagged with -1
+        cmap.set_under("pink" if withNoise else "white")
+        # Use BoundaryNorm to map values exactly
+        bounds = np.arange(0, cmax + 2)  # Color bins
+        norm = mplcolors.BoundaryNorm(bounds, cmap.N)
+        # Draw empty histogram to set the axes
+        ret = hcl.plot(**args)  # type: ignore
+        mesh = plt.pcolormesh(x, y, C.T, cmap=cmap, norm=norm, rasterized=True)
+        # Draw cbar on automatic cbar axes from hist package
+        if ret[1] is not None:  # type: ignore
+            cbar = plt.colorbar(mesh, cax=ret[1].ax)  # type: ignore
+            cbar.ax.set_ylim(1)
+
+    def _get_cluster_hist(self, proj) -> hist.BaseHist:
+        axes = {"xy": ("X", "Y"), "xz": ("X", "Z"), "yz": ("Y", "Z")}
+        if proj not in axes:
+            raise ValueError("Invalid projection")
+        ax = axes[proj]
+        xaxis = self.fHist.axes[ax[0]]
+        yaxis = self.fHist.axes[ax[1]]
+        h = (
+            hist.Hist.new.Reg(
+                len(xaxis.centers),
+                xaxis.edges[0],
+                xaxis.edges[-1],
+                name=xaxis.name,
+                label=xaxis.label,
+            )
+            .Reg(
+                len(yaxis.centers),
+                yaxis.edges[0],
+                yaxis.edges[-1],
+                name=yaxis.name,
+                label=yaxis.label,
+            )
+            .Double()
+        )
+        for id, vals in self.fVoxels.items():
+            color = id + 1 if id >= 0 else id
+            for v in vals:
+                pos = v.GetPosition()  # type: ignore
+                bins = (int(pos.X()), int(pos.Y()), int(pos.Z()))
+                if proj == "xy":
+                    h[bins[0], bins[1]] = color
+                elif proj == "xz":
+                    h[bins[0], bins[2]] = color
+                else:
+                    h[bins[1], bins[2]] = color
+        return h
 
     def plot_3d(self, **kwargs) -> None:
         vals = self.fHist.values()
@@ -115,48 +251,12 @@ class TPCInterface:
             edgecolor="none",
             linewidth=0.3,
             # alpha=0.75,
+            **kwargs,
         )
         ax.set_xlim(0, self.fHist.axes[0].edges[-1])  # type: ignore
         ax.set_ylim(0, self.fHist.axes[1].edges[-1])  # type: ignore
         ax.set_zlim(0, self.fHist.axes[2].edges[-1])  # type: ignore
         return
-
-
-class LineInterface:
-    def __init__(self, line: object) -> None:
-        self.fPoint: np.ndarray = np.array(
-            [
-                line.GetPoint().X(),  # type: ignore
-                line.GetPoint().Y(),  # type: ignore
-                line.GetPoint().Z(),  # type: ignore
-            ]
-        )
-        self.fDir: np.ndarray = np.array(
-            [
-                line.GetDirection().Unit().X(),  # type: ignore
-                line.GetDirection().Unit().Y(),  # type: ignore
-                line.GetDirection().Unit().Z(),  # type: ignore
-            ]
-        )
-        return
-
-    def plot(self, proj: str = "xy", **kwargs) -> None:
-        x = np.array([0, 128])
-        t = (x - self.fPoint[0]) / self.fDir[0]
-        y = self.fPoint[1] + t * self.fDir[1]
-        z = self.fPoint[2] + t * self.fDir[2]
-        if proj == "xy":
-            plt.plot(x, y, **kwargs)
-        elif proj == "xz":
-            plt.plot(x, z, **kwargs)
-        elif proj == "yz":
-            plt.plot(y, z, **kwargs)
-        else:
-            raise ValueError("Invalid proj passed to plot")
-        return
-
-    def __str__(self) -> str:
-        return f"Dir: {self.fDir[0]:.2f}, {self.fDir[1]:.2f}, {self.fDir[2]:.2f}"
 
 
 class KinInterface:
