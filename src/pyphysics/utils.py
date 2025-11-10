@@ -2,7 +2,9 @@ import numpy as np
 from scipy.interpolate import CubicSpline, interp1d
 from scipy.optimize import root_scalar
 import hist
+from matplotlib.colorbar import Colorbar
 import matplotlib.axes as mplaxes
+import matplotlib.ticker as mpltick
 from typing import Callable, List
 
 
@@ -77,7 +79,9 @@ def set_hist_overflow(h: hist.BaseHist, overflow: float) -> None:
     return None
 
 
-def annotate_subplots(axs: mplaxes.Axes | List | np.ndarray, x=0.125, y=0.925, color="black") -> None:
+def annotate_subplots(
+    axs: mplaxes.Axes | List | np.ndarray, x=0.125, y=0.925, color="black"
+) -> None:
     if isinstance(axs, mplaxes.Axes):
         axs = np.array([axs])
     for i, ax in enumerate(axs):
@@ -93,3 +97,24 @@ def annotate_subplots(axs: mplaxes.Axes | List | np.ndarray, x=0.125, y=0.925, c
             color=color,
         )
     return None
+
+
+class ROOTLogFormatter(mpltick.LogFormatterSciNotation):
+    """
+    Custom class overriding log formatter in pcolormesh
+    to print 10^0 tick as 1, as in ROOT
+    """
+
+    def __init__(self, base=10, labelOnlyBase=True, **kwargs):
+        super().__init__(base=base, labelOnlyBase=labelOnlyBase, **kwargs)
+
+    def __call__(self, x, pos=None):
+        if x == 1:
+            return "1"
+        return super().__call__(x, pos)
+
+
+def apply_ROOT_colorbar(cbar: Colorbar) -> None:
+    cbar.formatter = ROOTLogFormatter()
+    cbar.update_ticks()
+    return
