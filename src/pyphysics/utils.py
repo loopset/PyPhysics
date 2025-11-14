@@ -114,6 +114,11 @@ class ROOTLogFormatter(mpltick.LogFormatterSciNotation):
         return super().__call__(x, pos)
 
 
+def apply_log_formatter(ax: mplaxes.Axes) -> None:
+    ax.yaxis.set_major_formatter(ROOTLogFormatter())
+    return
+
+
 def apply_ROOT_colorbar(cbar: Colorbar) -> None:
     cbar.formatter = ROOTLogFormatter()
     cbar.update_ticks()

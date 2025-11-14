@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from functools import partial
 from typing import Any, Callable, List, Dict, Tuple, Union
 import ROOT as r  # type: ignore
+from mplhep.plot import Hist1DArtists
 
 from pyphysics.root_interface import parse_tgraph, parse_th1
 from pyphysics.utils import create_spline3
@@ -279,9 +280,11 @@ class FitInterface:
         self.fSigmas: Dict[str, Union[float, un.UFloat]] = {}
         self.fAmps: Dict[str, Union[float, un.UFloat]] = {}
         self.fLgs: Dict[str, Union[float, un.UFloat]] = {}
+        self.fHistEx: hist.BaseHist | None = None
         self.fGlobal: np.ndarray | None = None
         self.fFuncs: Dict[str, Callable[..., Any]] = {}
         self.fHistPS: Dict[str, hist.BaseHist] = {}
+        self.fFitRange: Tuple[float, float] = (-1, -1)
         self.fChi: float = 0
         self.fNdof: int = 0
 
@@ -315,6 +318,11 @@ class FitInterface:
             # If simple, exist here
             if simple:
                 return
+            # Ex spectrum
+            self.fHistEx = parse_th1(f.Get("HistoEx"))
+            # Fit range
+            pair = f.Get("FitRange")
+            self.fFitRange = (pair.first, pair.second)
             # Global fit
             self.fGlobal = parse_tgraph(f.Get("GraphGlobal"))
             # Functions
@@ -358,11 +366,19 @@ class FitInterface:
                 self.fFuncs[key] = a  # type: ignore
         return
 
-    def get(self, state: str) -> tuple:
+    def get(self, state: str) -> Tuple[float | un.UFloat, float | un.UFloat]:
         if state in self.fEx and state in self.fSigmas:
-            return (self.fEx[state], self.fEx[state])
+            return (self.fEx[state], self.fSigmas[state])
         else:
-            return (None, None)
+            return (-1, -1)
+
+    def plot_hist(self, **kwargs) -> None:
+        if self.fHistEx is None:
+            return
+        args = dict(histtype="errorbar")
+        args.update(kwargs)
+        self.fHistEx.plot(**args)
+        return
 
     def plot_global(self, **kwargs) -> None:
         if self.fGlobal is None:
@@ -372,25 +388,73 @@ class FitInterface:
         plt.plot(self.fGlobal[:, 0], self.fGlobal[:, 1], **args)  # type: ignore
 
     def plot_func(
-        self, key: str, nbins: int, xmin: float, xmax: float, **kwargs
-    ) -> None:
+        self, key: str, model: Tuple[int, float, float] | None = None, **kwargs
+    ) -> Hist1DArtists | None:
         if key not in self.fFuncs:
             return
-        if "g" not in key and "v" not in key:
-            print("Do not use plot_func for funcs other than gaus or voigt")
+        # Plot gaus or voigt
+        if isinstance(self.fFuncs[key], partial):
+            # Build histogram
+            if model:
+                h = hist.Hist.new.Reg(*model).Double()
+            elif self.fHistEx is not None:
+                h = self.fHistEx.copy().reset()
+            else:
+                raise ValueError("Cannot create histogram for functions")
+            # Fill histogram
+            for i, x in enumerate(h.axes[0].centers):
+                vals = self.fFuncs[key](x)
+                h[i] = vals[0]
+            # Plot
+            args = dict(histtype="step", yerr=False, flow=None)
+            args.update(kwargs)
+            if h.sum() == 0:
+                return
+            return h.plot(**args)  # type: ignore
+        else:  # Cte or ps
+            args = dict(histtype="step", yerr=False, flow=None, ls="--")
+            args.update(kwargs)
+            if self.fHistPS[key].sum() == 0:
+                return
+            return self.fHistPS[key].plot(**args)  # type: ignore
+
+    def format_ax(self, ax: mplaxes.Axes) -> None:
+        # Labels
+        ax.set_xlabel(r"$E_{x}$ [MeV]")
+        if self.fHistEx is not None:
+            bw = self.fHistEx.axes[0].widths[0] * 1000
+        else:
+            bw = -1
+        ax.set_ylabel(f"Counts / {bw:.0f} keV")
+        # Limits
+        ax.set_xlim(self.fFitRange[0], self.fFitRange[1])
+        if ax.get_yscale() != "log":
+            ax.set_ylim(0)
+        else:
+            ax.set_ylim(1)
+
+    def scale_limit(self, scale: float, xrange: tuple) -> None:
+        if self.fHistEx is None or self.fGlobal is None:
             return
-        h = hist.Hist.new.Reg(nbins, xmin, xmax).Double()
-        # Fill histogram
-        for i, x in enumerate(h.axes[0].centers):
-            vals = self.fFuncs[key](x)
-            h[i] = vals[0]
-        args = dict(histtype="step", yerr=False, flow=None)
-        args.update(kwargs)
-        h.plot(**args)  # type: ignore
-        # # Fill function
-        # x = np.linspace(-5, 20, 500)
-        # y = self.fFuncs[key](x)
-        # plt.plot(x, y, color="orange")
+        # Histo
+        bmin = self.fHistEx.axes[0].index(xrange[0])
+        bmax = self.fHistEx.axes[0].index(xrange[1])
+        self.fHistEx = self.fHistEx[bmin:bmax]  # type: ignore
+        self.fHistEx *= scale  # type:ignore
+        # Global
+        a = self.fGlobal
+        self.fGlobal = a[(a[:, 0] >= xrange[0]) & (a[:, 0] <= xrange[1])]
+        self.fGlobal[:, 1] *= scale
+        # Functions
+        for k in self.fAmps.keys():
+            self.fAmps[k] *= scale  # type: ignore
+        self._init_funcs()
+        # Phase spaces
+        for k in self.fHistPS.keys():
+            self.fHistPS[k] = self.fHistPS[k][bmin:bmax]  # type: ignore
+            self.fHistPS[k] *= scale  # type: ignore
+
+        return
 
 
 class SFModel:
@@ -498,11 +562,18 @@ class SFInterface:
         exp = self.fExps.get(state)
         if exp is None:
             return
-        args = {"color": "black", "marker": "s", "ms": 5, "ls": "none"}
+        args = {
+            "color": "black",
+            "mfc": "black",
+            "marker": "o",
+            "ms": 3,
+            "ls": "none",
+            "capsize": 0,
+        }
         args.update(kwargs)
-        ax.errorbar(exp[:, 0], exp[:, 1], yerr=exp[:, 2], **args)
-        # ax.set_xlabel(r"$\theta_{\mathrm{CM}}$ [$^{\circ}$]")
-        # ax.set_ylabel(r"$\mathrm{d}\sigma/\mathrm{d}\Omega$ [mb/sr]")
+        # X error to represent bin width
+        bw = exp[1, 0] - exp[0, 0]
+        ax.errorbar(exp[:, 0], exp[:, 1], xerr=bw / 2, yerr=exp[:, 2], **args)
         return
 
     def plot_models(self, state: str, ax: mplaxes.Axes, **kwargs) -> list:
@@ -511,16 +582,7 @@ class SFInterface:
         exp = self.fExps.get(state)
         if models is None or exp is None:
             return ret
-        # X axis settings
-        # xmin = exp[:, 0].min()
-        # xmax = exp[:, 0].max()
-        # offset = 3
-        # xaxis = np.linspace(max(0, xmin - offset), xmax + offset, 200)
         xaxis = np.linspace(0, 180, 800)
-        # Y axis settings
-        ymin = exp[:, 1].min()
-        ymax = exp[:, 1].max()
-        scale = 0.9
         args: dict = {"marker": "none", "lw": 1.25}
         args.update(kwargs)
         for model in reversed(models):
@@ -529,7 +591,23 @@ class SFInterface:
                 continue
             spe = create_spline3(g[:, 0], g[:, 1])
             label = rf"{model.fName}"
-            label = label.replace("l", rf"$\ell$")
+            label = label.replace("l", r"$\ell$")
             ret.append(ax.plot(xaxis, spe(xaxis), label=label, **args)[0])
-            ax.set_ylim(ymin * (1 - scale), ymax * (1 + scale))
         return ret
+
+    def format_ax(self, state: str, ax: mplaxes.Axes) -> None:
+        exp = self.fExps.get(state)
+        if exp is None:
+            return
+        # X axis settings
+        xmin = exp[:, 0].min()
+        xmax = exp[:, 0].max()
+        offset = 5
+        ax.set_xlim(max(0, xmin - offset), xmax + offset)
+        ax.set_xlabel(r"$\theta_{CM}$ [$\circ$]")
+        # Y axis settings
+        ymin = exp[:, 1].min()
+        ymax = exp[:, 1].max()
+        scale = 0.9
+        ax.set_ylim(ymin * (1 - scale), ymax * (1 + scale))
+        ax.set_ylabel(r"$d\sigma/d\Omega$ [$mb\;sr^{-1}$]")
