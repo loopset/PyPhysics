@@ -459,12 +459,18 @@ class FitInterface:
 
 class SFModel:
     def __init__(
-        self, name: str, sf: un.UFloat, chi: float, g: np.ndarray | None = None
+        self,
+        name: str,
+        sf: un.Variable,
+        chi: float,
+        g: np.ndarray | None = None,
+        intsf: un.Variable = un.ufloat(1, 1),
     ) -> None:
         self.fName = name
         self.fSF = sf
         self.fChi = chi
         self.fGraph = g
+        self.fIntSF = intsf
         return
 
     def __str__(self) -> str:
@@ -499,6 +505,7 @@ class SFInterface:
             for state in states:
                 # SFs from collection
                 col = f.Get(f"{state}_sfs")
+                intcol = f.Get(f"{state}_intsfs")
                 ## Graphs from mg
                 gs = f.Get(f"{state}_mg")
                 # List of models
@@ -511,6 +518,12 @@ class SFInterface:
                         if aux.GetTitle() == model:
                             g = parse_tgraph(aux)
                             break
+                    # Get integrated SFs if present
+                    intsf = (
+                        un.ufloat(intcol.Get(model).GetSF(), intcol.Get(model).GetUSF())
+                        if intcol
+                        else un.ufloat(1, 1)
+                    )
                     # Create SFModel class
                     lst.append(
                         SFModel(
@@ -518,6 +531,7 @@ class SFInterface:
                             un.ufloat(sf.GetSF(), sf.GetUSF()),
                             sf.GetChi2Red(),
                             g,
+                            intsf,
                         )
                     )
                 # Append models
