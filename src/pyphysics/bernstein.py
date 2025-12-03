@@ -175,7 +175,7 @@ def BE_to_beta(
         # Multiply by spin factor, assuming decay is to ground state!
         factor = (2 * l + 1) / (2 * lgs + 1)
         be *= factor  # type: ignore
-    beta = 4 * math.pi / (3 * p.fZ * r**l) * umath.sqrt(be)  # type: ignore
+    beta = 4 * math.pi / (3 * p.Z * r**l) * umath.sqrt(be)  # type: ignore
     return beta
 
 
@@ -185,5 +185,5 @@ def simple_bernstein(
     """
     Simple and original Bersntein formula
     """
-    ratio = bpbn * (nucl / em * (1 + 1.0 / bpbn * p.fN / p.fZ) - 1)  # type: ignore
+    ratio = bpbn * (nucl / em * (1 + 1.0 / bpbn * p.N / p.Z) - 1)  # type: ignore
     return ratio

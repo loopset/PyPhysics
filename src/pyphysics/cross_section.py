@@ -21,8 +21,6 @@ class Comparator:
     def add_models(self, files: Dict[str, str]) -> None:
         for key, file in files.items():
             self.add_model(key, file)
-        ## and why not call fit directly!
-        self.fit()
         return
 
     def add_model(self, key: str, file: str) -> None:

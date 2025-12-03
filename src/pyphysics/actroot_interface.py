@@ -276,10 +276,10 @@ class KinInterface:
 
 class FitInterface:
     def __init__(self, file: str, simple: bool = False) -> None:
-        self.fEx: Dict[str, Union[float, un.UFloat]] = {}
-        self.fSigmas: Dict[str, Union[float, un.UFloat]] = {}
-        self.fAmps: Dict[str, Union[float, un.UFloat]] = {}
-        self.fLgs: Dict[str, Union[float, un.UFloat]] = {}
+        self.fEx: Dict[str, Union[float, un.Variable]] = {}
+        self.fSigmas: Dict[str, Union[float, un.Variable]] = {}
+        self.fAmps: Dict[str, Union[float, un.Variable]] = {}
+        self.fLgs: Dict[str, Union[float, un.Variable]] = {}
         self.fHistEx: hist.BaseHist | None = None
         self.fGlobal: np.ndarray | None = None
         self.fFuncs: Dict[str, Callable[..., Any]] = {}
@@ -366,7 +366,7 @@ class FitInterface:
                 self.fFuncs[key] = a  # type: ignore
         return
 
-    def get(self, state: str) -> Tuple[float | un.UFloat, float | un.UFloat]:
+    def get(self, state: str) -> Tuple[float | un.Variable, float | un.Variable]:
         if state in self.fEx and state in self.fSigmas:
             return (self.fEx[state], self.fSigmas[state])
         else:
@@ -624,4 +624,4 @@ class SFInterface:
         ymax = exp[:, 1].max()
         scale = 0.9
         ax.set_ylim(ymin * (1 - scale), ymax * (1 + scale))
-        ax.set_ylabel(r"$d\sigma/d\Omega$ [$mb\;sr^{-1}$]")
+        ax.set_ylabel(r"$d\sigma/d\Omega$ [$mb\cdot sr^{-1}$]")

@@ -61,13 +61,24 @@ class QuantumNumbers:
         return f"nljt:({self.n},{self.l},{self.j},{self.t})"
 
     def format(self) -> str:
-        frac = Fraction(self.j).limit_denominator()
-        ret = rf"{self.n}{QuantumNumbers.letters[self.l]}$_{{{frac}}}$"
+        # If spectroscopic information
+        if self.l >= 0:
+            frac = Fraction(self.j).limit_denominator()
+            ret = rf"{self.n}{QuantumNumbers.letters[self.l]}$_{{{frac}}}$"
+        else:  # Summary mode: no info on l nor n. n is "state counter" and j = parity * j
+            frac = Fraction(abs(self.j)).limit_denominator()
+            pi = "+" if self.j > 0 else "-"
+            ret = rf"${frac}^{{{pi}}}_{{{self.n}}}$"
         return ret
 
     def format_simple(self) -> str:
-        frac = Fraction(self.j).limit_denominator()
-        ret = f"{self.n}{QuantumNumbers.letters[self.l]}{frac}"
+        if self.l >= 0:
+            frac = Fraction(self.j).limit_denominator()
+            ret = f"{self.n}{QuantumNumbers.letters[self.l]}{frac}"
+        else:
+            frac = Fraction(abs(self.j)).limit_denominator()
+            pi = "+" if self.j > 0 else "-"
+            ret = f"{frac}{pi}{self.n}"
         return ret
 
     def get_j_fraction(self) -> str:
@@ -144,7 +155,9 @@ class ShellModel:
                             l = int(column)
                         elif c == 4:
                             j = int(column)
-                if "0(" in line:
+                if re.match(
+                    r"^\d+\(", line
+                ):  # States start with 2*Jf(. This is their clear signature
                     ex = float(line[35:41].strip())
                     c2s = float(line[45:51].strip())
                     # Define key
@@ -157,6 +170,35 @@ class ShellModel:
                     else:
                         ret[q].append(sm)
         return ret
+
+    def add_summary(self, file: str) -> None:
+        summary: SMDataDict = defaultdict(list)
+        # Parse summary file
+        with open(file, "r") as f:
+            for line in f:
+                if not line:
+                    continue
+                try:
+                    N = int(line[0:5])
+                except ValueError:
+                    continue
+                j = line[7:11]
+                pi = +1 if line[12] == "+" else -1
+                count = line[14:19]
+                t = line[21:25]
+                ex = line[37:45]
+                # Convert
+                count = int(count)
+                j = float(Fraction(j))
+                t = float(Fraction(t))
+                ex = float(ex)
+                # Build key in this format. L = -1 indicates that is "summary" version instead of "spectroscopic one"
+                key = QuantumNumbers(count, -1, pi * j, t)
+                val = ShellModelData(ex, -1)
+                summary[key].append(val)
+        # Overwrite
+        self.data = summary
+        return
 
     def add_isospin(self, file: str, df: pd.DataFrame | None = None) -> None:
         newdict: SMDataDict = defaultdict(list)
@@ -188,7 +230,10 @@ class ShellModel:
                 # Find old key
                 for key, vals in self.data.items():
                     for val in vals:
-                        if math.isclose(unc.nominal_value(val.Ex), ex, abs_tol=0.00105) and key.j == j:
+                        if (
+                            math.isclose(unc.nominal_value(val.Ex), ex, abs_tol=0.00105)
+                            and key.j == j
+                        ):
                             newkey = copy.deepcopy(
                                 key
                             )  # otherwise we are modifying it inplace... python :(
