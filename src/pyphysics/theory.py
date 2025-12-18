@@ -5,7 +5,7 @@ from fractions import Fraction
 import re
 import math
 import copy
-from typing import Dict, List
+from typing import Dict, List, Callable, Any
 
 
 class QuantumNumbers:

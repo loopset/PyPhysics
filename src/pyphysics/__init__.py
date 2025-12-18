@@ -13,6 +13,7 @@ from .theory import QuantumNumbers, ShellModelData, ShellModel, SMDataDict
 from .cross_section import Comparator
 from .bernstein import Radii, Diffuseness, Bernstein, BE_to_beta, simple_bernstein
 from .barager import BaragerRes, Barager
+from .beta import BetaFinder
 
 from .fitting import fit_poln
 
