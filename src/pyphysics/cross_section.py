@@ -2,6 +2,7 @@ from typing import Callable, Dict, Union
 import numpy as np
 import matplotlib.axes as mplaxes
 import matplotlib.pyplot as plt
+from numpy.typing import NDArray
 
 import lmfit as lm
 import uncertainties as un
@@ -23,8 +24,9 @@ class Comparator:
             self.add_model(key, file)
         return
 
-    def add_model(self, key: str, file: str) -> None:
-        data = parse_txt(file)
+    def add_model(self, key: str, file: str, data: NDArray | None = None) -> None:
+        if data is None:
+            data = parse_txt(file)
         self.fModels[key] = data
         ## And parse theoretical data
         self._parse_theoretical(key)
@@ -147,7 +149,7 @@ class Comparator:
 
     def draw(self, ax: mplaxes.Axes | None = None, title: str | None = None) -> None:
         if ax is None:
-            ax = plt.gca()
+            fig, ax = plt.subplots()
         ax.errorbar(
             self.fExp[:, 0],
             self.fExp[:, 1],

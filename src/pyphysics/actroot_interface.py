@@ -330,7 +330,7 @@ class FitInterface:
             # PS histograms
             for obj in f.Get("HistoPeaks"):
                 name = obj.GetName()
-                if "ps" in name:
+                if ("ps" in name) or ("cte" in name):
                     h = parse_th1(obj)
                     if h is not None:
                         self.fHistPS[name[1:]] = h
@@ -570,7 +570,7 @@ class SFInterface:
         lst = self.fSFs.get(state)
         if not lst:
             return
-        lst[:] = [model for model in lst if model.fName != name]
+        lst[:] = [model for model in lst if name not in model.fName]
 
     def plot_exp(self, state: str, ax: mplaxes.Axes, **kwargs) -> None:
         exp = self.fExps.get(state)
