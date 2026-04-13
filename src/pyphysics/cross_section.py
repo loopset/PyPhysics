@@ -17,6 +17,7 @@ class Comparator:
         self.fFitted: Dict[str, np.ndarray] = {}  # Fitted data
         self.fFitSplines: Dict[str, Callable] = {}  # Fitted splines
         self.fSFs: Dict[str, Union[float, un.UFloat]] = {}  # SF values
+        self.fChis: Dict[str, float] = {} # Chi2 values
         return
 
     def add_models(self, files: Dict[str, str]) -> None:
@@ -90,6 +91,8 @@ class Comparator:
         x = self.fModels[key][:, 0]
         yeval = eval_fit(x)
         self.fFitted[key] = np.column_stack((x, yeval))
+        # And add reduced chisqr
+        self.fChis[key] = res.redchi
         return
 
     def fit(self, show: bool = False, scale_covar=False) -> None:

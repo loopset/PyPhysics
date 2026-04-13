@@ -85,6 +85,8 @@ def annotate_subplots(
     if isinstance(axs, mplaxes.Axes):
         axs = np.array([axs])
     for i, ax in enumerate(axs):
+        if ax is None:
+            continue
         ax: mplaxes.Axes
         ax.annotate(
             chr(97 + i) + ")",
