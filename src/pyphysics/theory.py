@@ -111,14 +111,22 @@ SMDataDict = Dict[QuantumNumbers, List[ShellModelData]]
 
 
 class ShellModel:
-    def __init__(self, files: list = []) -> None:
+    def __init__(self, files: list = [], is_lsf: bool = False) -> None:
         self.data: SMDataDict = {}
+        self.BE = 0
+        self.is_lsf = is_lsf
 
         if len(files):
-            self.__buildFromFiles(files)
+            if not is_lsf:
+                self.__buildFromFiles(files)
+            else:
+                self.__buildFromLSF(files)
         return
 
     def __buildFromFiles(self, files: list) -> None:
+        """
+        Meant to read SFO-tls input files
+        """
         # Parse each file
         for file in files:
             input = self.__parse(file)
@@ -136,6 +144,16 @@ class ShellModel:
             for state in sublist:
                 state.Ex = state.Ex - self.BE  # type: ignore
                 state.Ex = round(state.Ex, 3)
+        return
+
+    def __buildFromLSF(self, files: list) -> None:
+        """
+        Meant to read WBT (.lsf) input files
+        """
+        # Parse each file
+        for file in files:
+            input = self.__parse_lsf(file)
+            self.data.update(input)
         return
 
     def __parse(self, file: str) -> dict:
@@ -169,6 +187,42 @@ class ShellModel:
                         ret[q] = [sm]
                     else:
                         ret[q].append(sm)
+        return ret
+
+    def __parse_lsf(self, file):
+        ret = {}
+        with open(file, "r") as f:
+            for lin in f:
+                line = lin.strip()
+                if not line:
+                    continue
+                if line.startswith("!"):
+                    continue
+                if "sum" in line:
+                    continue
+                # Get n, l and 2j
+                n = line[29]
+                l = line[31]
+                j2 = line[33:35]
+                if n == "n":
+                    continue
+
+                # Convert to q
+                # n -> n - 1 to use 0 convention
+                q = QuantumNumbers(int(n) - 1, int(l), float(j2) / 2)
+
+                # Get C2S and Ex
+                c2s = float(line[62:69])
+                exi = float(line[72:79])
+                exf = float(line[81:88])
+                ex = max(exi, exf)
+
+                # Build and add data
+                data = ShellModelData(ex, c2s)
+                if q not in ret:
+                    ret[q] = [data]
+                else:
+                    ret[q].append(data)
         return ret
 
     def add_summary(self, file: str) -> None:
