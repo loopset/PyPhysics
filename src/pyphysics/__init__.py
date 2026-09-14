@@ -15,7 +15,7 @@ from .bernstein import Radii, Diffuseness, Bernstein, BE_to_beta, simple_bernste
 from .barager import BaragerRes, Barager
 from .beta import BetaFinder
 from .fresco import ReproduceSTA, SystematicOverlap
-from .ws import WoodSaxonOverlap
+from .ws import WoodsSaxonOverlap
 
 from .fitting import fit_poln
 

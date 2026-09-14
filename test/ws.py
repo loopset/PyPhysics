@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 
+# Helper function to parse FRESCO nfl overlap output
 def parse_overlap(filename):
     with open(filename, "r") as f:
         lines = f.readlines()
@@ -32,11 +33,19 @@ fresco = parse_overlap("/media/Data/E748/Fits/12Be_d3He/Inputs/rms_li_1n/fort.26
 # Core: 9Li
 # Valence: p
 # BE: S2n(11Li)/2
-ws = phys.WoodSaxonOverlap(A=9, Z=3, a=1, z=1, n=0, l=1, j=0.5, be=-0.1847)
-print(f"gs for defautl V {ws.V:.2f} is :", ws.solve_eigen()[0])
-ws.solve_be()
+ws = phys.WoodsSaxonOverlap(core="9Li", valence="p", q="0p1/2", be=-0.1847)
+ws.solve()
+ws.print_config()
 
-ws.plot()
+norm = np.sum(ws.eigenWF**2 * ws.dr)  # type: ignore
+print(f"Norm of the wavefunction: {norm:.4f}")
+norm_fresco = np.sum(fresco[1] ** 2 * (fresco[0][1] - fresco[0][0]))
+print(f"Norm of the Fresco wavefunction: {norm_fresco:.4f}")
 
-# plt.gca().plot(fresco[0], fresco[2] / fresco[1], label="Fresco", color="crimson")
+_, axs = ws.plot()
+
+# Plot potential
+# axs[0].plot(fresco[0], fresco[2] / fresco[1], label="Fresco", color="crimson")
+# Plot wf
+axs[-1].plot(fresco[0], fresco[1], label="Fresco", color="crimson")
 plt.show()
