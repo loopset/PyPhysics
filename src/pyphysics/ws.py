@@ -53,9 +53,6 @@ class WoodsSaxonOverlap:
         ################################## Default potential settings
         # Coulomb
         self.rc: float = 1.25  # fm
-        self.addCoulombPot: bool = (
-            False  # for overlap calculations, fresco DOES NOT include the Coulomb potential (compared with FRESCO output)
-        )
         # Real
         self.V: float = -60.0  # MeV
         self.r0: float = 1.25  # fm
@@ -121,9 +118,7 @@ class WoodsSaxonOverlap:
         """
         Return the total potential at radius r
         """
-        return (
-            self._real(r) + self._spin_orbit(r) + self.addCoulombPot * self._coulomb(r)
-        )
+        return self._real(r) + self._spin_orbit(r) + self._coulomb(r)
 
     def _reduced_mass(self):
         """

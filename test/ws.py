@@ -33,7 +33,7 @@ fresco = parse_overlap("/media/Data/E748/Fits/12Be_d3He/Inputs/rms_li_1n/fort.26
 # Core: 9Li
 # Valence: p
 # BE: S2n(11Li)/2
-ws = phys.WoodsSaxonOverlap(core="9Li", valence="p", q="0p1/2", be=-0.1847)
+ws = phys.WoodsSaxonOverlap(core="9Li", valence="n", q="0p1/2", be=-0.1847)
 ws.solve()
 ws.print_config()
 
