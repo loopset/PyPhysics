@@ -1,5 +1,5 @@
 from .particle import Particle
-from .theory import QuantumNumbers
+from .theory import Orbital
 
 import numpy as np
 from typing import Union
@@ -18,7 +18,7 @@ class WoodsSaxonOverlap:
         self,
         core: str,
         valence: str,
-        q: Union[QuantumNumbers, str],
+        q: Union[Orbital, str],
         be: float,
         s: float = 1 / 2,
     ):
@@ -42,7 +42,7 @@ class WoodsSaxonOverlap:
         self.z = self.valence.Z
         # Quantum numbers
         if isinstance(q, str):
-            self.q = QuantumNumbers.from_str(q)
+            self.q = Orbital.from_str(q)
         else:
             self.q = q
         # Binding energy

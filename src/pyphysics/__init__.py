@@ -9,7 +9,7 @@ from .particle import Particle
 from .energy_loss import EnergyLoss
 from .kinematics import Kinematics
 
-from .theory import QuantumNumbers, ShellModelData, ShellModel, SMDataDict
+from .theory import Orbital, ShellModelData, ShellModel, SMDataDict, QuantumNumbers, StateJpi
 from .cross_section import Comparator
 from .bernstein import Radii, Diffuseness, Bernstein, BE_to_beta, simple_bernstein
 from .barager import BaragerRes, Barager

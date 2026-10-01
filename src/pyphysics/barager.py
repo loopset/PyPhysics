@@ -20,7 +20,7 @@ class BaragerRes:
         return f"-- BaragerRes --\n N-   : {self.NumRem}\n N+   : {self.NumAdd}\n D-   : {self.DenRem}\n D+   : {self.DenAdd}\n ESPE : {self.ESPE}"
 
     def do_adding(
-        self, q: th.QuantumNumbers, add: th.SMDataDict, sn: float, scale: float = 1
+        self, q: th.Orbital, add: th.SMDataDict, sn: float, scale: float = 1
     ) -> None:
         if q in add:
             for state in add[q]:
@@ -31,7 +31,7 @@ class BaragerRes:
         return
 
     def do_removal(
-        self, q: th.QuantumNumbers, rem: th.SMDataDict, sn: float, scale: float = 1
+        self, q: th.Orbital, rem: th.SMDataDict, sn: float, scale: float = 1
     ) -> None:
         if q in rem:
             for state in rem[q]:
@@ -59,7 +59,7 @@ class Barager:
         self.SnAdd: float = 0
         self.ScaleAdd: float = 1
         self.ScaleRem: float = 1
-        self.Results: Dict[th.QuantumNumbers, BaragerRes] = {}
+        self.Results: Dict[th.Orbital, BaragerRes] = {}
         return
 
     def set_removal(
@@ -78,7 +78,7 @@ class Barager:
         self.ScaleAdd = scale
         return
 
-    def do_for(self, qs: List[th.QuantumNumbers]) -> None:
+    def do_for(self, qs: List[th.Orbital]) -> None:
         for q in qs:
             res = BaragerRes()
             # Removal
@@ -93,7 +93,7 @@ class Barager:
         return
 
     def get_gap(
-        self, q0: th.QuantumNumbers, q1: th.QuantumNumbers
+        self, q0: th.Orbital, q1: th.Orbital
     ) -> float | unc.UFloat:
         if q0 in self.Results and q1 in self.Results:
             res = self.Results[q0].ESPE - self.Results[q1].ESPE  # type: ignore
@@ -102,7 +102,7 @@ class Barager:
             return res
         return 0
 
-    def get_ESPE(self, q: th.QuantumNumbers) -> float | unc.UFloat | None:
+    def get_ESPE(self, q: th.Orbital) -> float | unc.UFloat | None:
         res = self.Results.get(q)
         if res is None:
             return None
