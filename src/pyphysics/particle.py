@@ -15,7 +15,7 @@ class Particle:
         self.Z: int = 0
         self.N: int = 0
         self.mass: float = 0
-        self.mass_excess: float = 0
+        self.mass_excess: float = 0  # MeV
         # And init from symbol
         self._parse(symbol=self.symbol)
         return
@@ -54,14 +54,17 @@ class Particle:
                     self.Z = lZ
                     self.N = self.A - self.Z
                     self.symbol = lsymbol
-                    self.mass_excess = float(line[18:31])
+                    aux_mass_excess = line[18:31]
+                    aux_mass_excess = aux_mass_excess.strip().replace("#", "")
+                    self.mass_excess = float(aux_mass_excess) * 1e-3  # keV to MeV
                     self.mass = (
-                        self.A * utoMeV
-                        + (self.mass_excess * 1e-3)
-                        - self.Z * (emassU * utoMeV)
+                        self.A * utoMeV + self.mass_excess - self.Z * (emassU * utoMeV)
                     )
                     return
                 except Exception:
+                    print(f"Error parsing line: {line}")
+                    for idx, char in enumerate(line):
+                        print(f"{idx}: {char}")
                     continue
         raise ValueError(f"Cannot find particle {self.symbol}")
 
@@ -111,3 +114,12 @@ class Particle:
 
     def get_s2p(self) -> float:
         return self._get_spX(2)
+
+    def get_be(self) -> float:
+        return (
+            self.Z * pmass
+            + self.N * nmass
+            + self.Z * emassU * utoMeV
+            - self.A * utoMeV
+            - self.mass_excess
+        )

@@ -136,18 +136,20 @@ class ShellModelData:
         sf: float | unc.UFloat,
         jpii: StateJpi = StateJpi(),
         jpif: StateJpi = StateJpi(),
+        be: float | unc.UFloat = -1.0,
     ) -> None:
         self.Ex = ex
         self.SF = sf
         self.Jpii = jpii
         self.Jpif = jpif
+        self.BE = be
         return
 
     def __str__(self) -> str:
-        return f"Data:\n  Ex : {self.Ex:.2f}\n  SF : {self.SF:.2f}\n Jpii : {self.Jpii.format_simple()}\n  Jpif : {self.Jpif.format_simple()}"
+        return f"Data:\n  Ex : {self.Ex:.2f}\n  SF : {self.SF:.2f}\n Jpii : {self.Jpii.format_simple()}\n  Jpif : {self.Jpif.format_simple()}\n BE : {self.BE:.2f}"
 
     def __repr__(self) -> str:
-        return f"SMData(Ex: {self.Ex:.2f}, SF: {self.SF:.2f}, Jpii: {self.Jpii.format_simple()}, Jpif: {self.Jpif.format_simple()})"
+        return f"SMData(Ex: {self.Ex:.2f}, SF: {self.SF:.2f}, Jpii: {self.Jpii.format_simple()}, Jpif: {self.Jpif.format_simple()}, BE: {self.BE:.2f})"
 
 
 # Alias
@@ -323,18 +325,20 @@ class ShellModel:
                 pi = +1 if line[12] == "+" else -1
                 count = line[14:19]
                 t = line[21:25]
+                be = line[27:36]
                 ex = line[37:45]
                 # Convert
                 count = int(count)
                 j = float(Fraction(j))
                 t = float(Fraction(t))
+                be = float(be)
                 ex = float(ex)
                 # Build key in this format. L = -1 indicates that is "summary" version instead of "spectroscopic one"
                 key = Orbital(count, -1, pi * j, t)
                 # Add information on Jpi to INITIAL part only
                 state_ji = StateJpi(j, pi)
                 state_jf = StateJpi()
-                val = ShellModelData(ex, -1, state_ji, state_jf)
+                val = ShellModelData(ex, -1, state_ji, state_jf, be)
                 summary[key].append(val)
         # Overwrite
         self.data = summary
@@ -460,14 +464,16 @@ class ShellModel:
         self,
         grouped: GroupExJpif,
         ax=None,
+        x: float = 0,
         width: float = 0.6,
         height: float = 0.15,
         right_padding: float = 0.15,
+        left_padding: float = 0.15,
+        fontsize: int = 12,
         colors: dict = {},
-    ) -> Axes:
+    ) -> tuple[Axes, list]:
         if ax is None:
             fig, ax = plt.subplots()
-        x = 0
         default_colors = {
             Orbital.from_str("0p3/2"): "slategrey",
             Orbital.from_str("0p1/2"): "green",
@@ -487,8 +493,9 @@ class ShellModel:
             # 1: background
             back_w = width
             ax.barh(ex, back_w, left=left, height=height, color="lightgray", alpha=0.3)
-            # 2: fraction of each component
+            # 2: fraction of each component and get max sf
             norm = sum(unc.nominal_value(sf) for q, sf in lst)
+            max_sf = max(unc.nominal_value(sf) for q, sf in lst)
             aux_x = left
             for q, sf in lst:
                 frac = unc.nominal_value(sf) / norm
@@ -514,7 +521,18 @@ class ShellModel:
                     xy=(left + width + right_padding, ex),
                     ha="center",
                     va="center",
-                    fontsize=12,
+                    fontsize=fontsize,
+                )
+                texts.append(tr)
+            # Annotate max SF
+            if left_padding != -1:
+                aux = f"{max_sf:.2f}"
+                tr = ax.annotate(
+                    aux,
+                    xy=(left - left_padding, ex),
+                    ha="center",
+                    va="center",
+                    fontsize=fontsize,
                 )
                 texts.append(tr)
 
@@ -523,4 +541,4 @@ class ShellModel:
         # Axis settings
         ax.set_xlim(-1, 1)
         ax.set_ylabel(r"$E_x$ [MeV]")
-        return ax
+        return ax, texts

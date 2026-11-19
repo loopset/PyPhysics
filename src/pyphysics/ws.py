@@ -76,6 +76,10 @@ class WoodsSaxonOverlap:
         self.eigenWF: NDArray = np.array([])  # WF = R(r), not u(r) = r*R(r)
         self.rms = np.nan
 
+        #####################################33
+        # Verbose
+        self.verbose = False
+
     def _toR(self, r):
         """
         Convert any r radius to R = r * A^(1/3)
@@ -166,12 +170,18 @@ class WoodsSaxonOverlap:
             return e - self.be
 
         # Fastest solver is secant
-        res = root_scalar(func, x0=self.V, method="secant")
+        res = root_scalar(
+            func, x0=self.V, x1=self.V * 1.9, method="secant", maxiter=200
+        )
         self.V = res.root
         self.eigenE, self.eigenWF = self._solve_eigen()
-        print(
-            f"Converged ? {res.converged} for BE = {self.be:.3f} MeV, with V = {self.V:.3f} MeV and V/Vini = {self.V/V0:.3f}"
-        )
+        if self.verbose:
+            print(
+                f"Converged ? {res.converged} for BE = {self.be:.3f} MeV, with V = {self.V:.3f} MeV and V/Vini = {self.V / V0:.3f}"
+            )
+            print(
+                f"Flag {res.flag}, iterations {res.iterations}, function calls {res.function_calls}"
+            )
 
     def _normalise(self, wf):
         I = np.sum(wf**2 * self.r**2) * self.dr

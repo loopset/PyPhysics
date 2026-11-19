@@ -9,13 +9,21 @@ from .particle import Particle
 from .energy_loss import EnergyLoss
 from .kinematics import Kinematics
 
-from .theory import Orbital, ShellModelData, ShellModel, SMDataDict, QuantumNumbers, StateJpi
+from .theory import (
+    Orbital,
+    ShellModelData,
+    ShellModel,
+    SMDataDict,
+    QuantumNumbers,
+    StateJpi,
+)
 from .cross_section import Comparator
 from .bernstein import Radii, Diffuseness, Bernstein, BE_to_beta, simple_bernstein
 from .barager import BaragerRes, Barager
 from .beta import BetaFinder
 from .fresco import ReproduceSTA, SystematicOverlap
 from .ws import WoodsSaxonOverlap
+from .azure import AZUREInterface, Parameter, Chi2Minimizer
 
 from .fitting import fit_poln
 
